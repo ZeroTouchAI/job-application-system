@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+
+  // Saved job-search criteria, reused every sync run.
+  searchNiche       String?
+  searchLocation    String?
+  searchRemoteOnly  Boolean  @default(false)
+  searchKeywords    String[] @default([])
+  syncFrequencyDays Int      @default(3)
+
+  // Optional user-added source board slugs.
+  greenhouseBoards String[] @default([])
+  leverBoards      String[] @default([])
+
+  profile      Profile?
+  applications Application[]
+}
+
+/// The verified skills database — single source of truth for all
+/// generated content. Nothing in a generated document may exceed
+/// what's represented here.
+model Profile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName    String?
+  email       String?
+  phone       String?
+  location    String?
+  linkedinUrl String?
+
+  // JSON blobs matching the shapes in lib/profileSchema.ts (Zod-validated
+  // on write). Kept as JSON rather than fully normalized tables so the
+  // schema can evolve without constant migrations.
+  workExperience   Json @default("[]")   // WorkExperienceEntry[]
+  certifications   Json @default("[]")   // CertificationEntry[]
+  technicalSkills  Json @default("[]")   // SkillCategory[]
+
+  /// Explicitly tracked "I do NOT have this" list — prevents the AI
+  /// from ever implying the user has something they don't.
+  knownGaps String[] @default([])
+
+  updatedAt DateTime @updatedAt
+}
+
+model JobPosting {
+  id          String   @id @default(cuid())
+  source      String   // "arbeitnow" | "greenhouse" | "lever" | "rss"
+  sourceId    String   // id/slug from the source, for de-duping
+  title       String
+  company     String
+  location    String?
+  remote      Boolean  @default(false)
+  rawText     String
+  applyUrl    String?
+  applyEmail  String?  // only set if the posting itself lists one
+  requiredSkills   String[] @default([])
+  preferredSkills  String[] @default([])
+  atsKeywords      String[] @default([])
+  fetchedAt   DateTime @default(now())
+
+  applications Application[]
+
+  @@unique([source, sourceId])
+}
+
+model Application {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPostingId  String
+  jobPosting    JobPosting @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+
+  matchScore      Int
+  keywordsMatched String[] @default([])
+  keywordsMissing String[] @default([])
+
+  resumeDocPath       String?
+  coverLetterDocPath  String?
+
+  /// Array of { claim, sourceRef, status } — see lib/engine/truthAudit.ts
+  truthAudit Json @default("[]")
+
+  status    String   @default("suggested") // suggested | drafted | applied | interview | offer | rejected
+  appliedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, jobPostingId])
+}
