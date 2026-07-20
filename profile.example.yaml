@@ -1,0 +1,50 @@
+# Example profile — fake data, safe to commit.
+# Copy this structure into your own profile.yaml (gitignored) or paste
+# equivalent content into the /profile page in the app.
+# NEVER commit a real filled-in profile — treat it like credentials.
+
+contact:
+  name: "Jordan Rivera"
+  email: "jordan.rivera@example.com"
+  phone: "555-123-4567"
+  location: "Toronto, ON"
+  linkedin: "https://linkedin.com/in/jordan-rivera-example"
+
+work_experience:
+  - employer: "Acme Logistics"
+    title: "Operations Coordinator"
+    location: "Toronto, ON"
+    start_date: "2022-01"
+    end_date: "Present"
+    bullets:
+      - "Reorganized the weekly dispatch schedule for a 12-driver fleet, cutting average delivery delays from 40 minutes to 15."
+      - "Built a spreadsheet-based tracking system adopted by 3 other regional offices."
+    verified: true
+  - employer: "Riverside Cafe"
+    title: "Shift Supervisor"
+    location: "Toronto, ON"
+    start_date: "2019-06"
+    end_date: "2021-12"
+    bullets:
+      - "Trained and scheduled a team of 8 staff across weekday and weekend shifts."
+      - "Reduced weekly food waste by roughly 20% by adjusting prep quantities against sales data."
+    verified: true
+
+certifications:
+  - name: "Google Data Analytics Certificate"
+    issuer: "Google / Coursera"
+    year: "2023"
+    verified: true
+
+technical_skills:
+  categories:
+    - name: "Tools & Software"
+      items: ["Excel", "Google Sheets", "Airtable", "Slack"]
+    - name: "Operations"
+      items: ["Scheduling", "Inventory tracking", "Vendor coordination"]
+
+known_gaps:
+  - "No post-secondary degree"
+  - "No formal project management certification (PMP)"
+
+resume_history: []

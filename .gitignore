@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# env — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# real user profile data — never commit, treat like credentials
+profile.yaml
+profile.json
+!profile.example.yaml
+
+# generated output
+*.docx
+!prompts/**/*.md
+
+# misc
+.DS_Store
+*.log
+dist/
+build/

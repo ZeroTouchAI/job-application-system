@@ -1,0 +1,24 @@
+name: Sync job postings
+
+on:
+  schedule:
+    # Every 3 days at 08:00 UTC. Adjust to taste — this is the free
+    # replacement for a paid automation platform's scheduler.
+    - cron: "0 8 */3 * *"
+  workflow_dispatch: {} # allows manual trigger from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run sync-jobs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GREENHOUSE_DEFAULT_BOARDS: ${{ vars.GREENHOUSE_DEFAULT_BOARDS }}
+          LEVER_DEFAULT_BOARDS: ${{ vars.LEVER_DEFAULT_BOARDS }}
