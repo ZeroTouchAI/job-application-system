@@ -1,9 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Profile, JobPostingAnalysis } from "../profileSchema";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const GROQ_BASE_URL = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
 export interface GeneratedCoverLetter {
   body: string;
@@ -28,23 +28,36 @@ export async function generateCoverLetter(
 ): Promise<GeneratedCoverLetter> {
   const systemPrompt = await loadSystemPrompt();
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2000,
-    system: systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: JSON.stringify({ profile, jobPosting: posting }),
-      },
-    ],
+  const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: JSON.stringify({ profile, jobPosting: posting }),
+        },
+      ],
+    }),
   });
 
-  const textBlock = message.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from generation model");
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Groq API error: ${res.status} ${errBody}`);
   }
 
-  const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
+  const json = await res.json();
+  const content: string | undefined = json.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("No content in Groq response");
+  }
+
+  const cleaned = content.replace(/```json|```/g, "").trim();
   return JSON.parse(cleaned) as GeneratedCoverLetter;
 }

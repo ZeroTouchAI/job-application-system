@@ -19,6 +19,6 @@ jobs:
       - run: npm run sync-jobs
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GREENHOUSE_DEFAULT_BOARDS: ${{ vars.GREENHOUSE_DEFAULT_BOARDS }}
           LEVER_DEFAULT_BOARDS: ${{ vars.LEVER_DEFAULT_BOARDS }}

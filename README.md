@@ -50,8 +50,12 @@ product spec.
   Supabase-as-plain-Postgres, or local Docker) — free tiers available
   everywhere, no vendor lock-in
 - **NextAuth.js** — self-contained auth, no third-party auth vendor required
-- **Anthropic API (Claude)** — resume/cover-letter generation, grounded in
-  the user's profile, with citation-based truth auditing
+- **Groq API** — resume/cover-letter generation, grounded in the user's
+  profile, with citation-based truth auditing. Free tier, no credit card
+  required ([console.groq.com](https://console.groq.com)). Called via
+  Groq's OpenAI-compatible endpoint, so swapping to any other
+  OpenAI-compatible provider later is a one-line env change
+  (`GROQ_BASE_URL` / `GROQ_MODEL`)
 - **`docx` npm package** — renders `.docx` output
 - **Node cron script** (`scripts/sync-jobs.ts`) — periodic job sourcing,
   runnable via any free scheduler (GitHub Actions cron, Railway cron, etc.)
@@ -70,7 +74,7 @@ product spec.
 ## Getting started
 
 ```bash
-cp .env.example .env        # fill in DATABASE_URL, ANTHROPIC_API_KEY, NEXTAUTH_SECRET
+cp .env.example .env        # fill in DATABASE_URL, GROQ_API_KEY, NEXTAUTH_SECRET
 npm install
 npx prisma migrate dev
 npm run dev
