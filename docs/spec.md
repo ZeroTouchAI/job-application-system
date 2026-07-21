@@ -1,8 +1,8 @@
-# Groundwork — Product Spec
+# Joby — Product Spec
 
 ## 1. Core idea
 
-Groundwork does three things:
+Joby does three things:
 
 1. **Sources** job postings from legitimate, ToS-compliant public sources on
    a schedule.
@@ -50,7 +50,7 @@ of these:
 **Replacement**: applications go through the posting's own official channel
 (ATS link, or an email address the *employer itself* published in the
 posting text). If the user already has a real contact (a referral, a
-business card, a publicly listed careers@ address), Groundwork will draft
+business card, a publicly listed careers@ address), Joby will draft
 the outreach email for review — but it never discovers the contact itself.
 
 ### 2.3 Fully automated applying

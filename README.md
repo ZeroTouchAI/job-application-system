@@ -1,4 +1,4 @@
-# Groundwork
+# Joby
 
 A free, open-source job-search co-pilot: it finds relevant job postings from
 legitimate public sources, tailors a resume and cover letter to each one from
@@ -6,16 +6,16 @@ a verified personal skills database, and tracks your applications — without
 ever inventing experience you don't have, and without scraping or emailing
 anyone's personal inbox without their consent.
 
-## Why "Groundwork"
+## Why "Joby"
 
 Two ideas, both load-bearing:
 
 1. **Grounded generation.** Every resume bullet is generated *from* your
    verified skills database, never invented. The AI selects, rewords, and
    organizes — it never fabricates an employer, title, date, or skill.
-2. **Doing the groundwork of a job search** — sourcing postings, tailoring
-   documents, tracking applications — so you don't have to do it manually for
-   every single posting.
+2. **A job-search co-pilot** — sourcing postings, tailoring documents,
+   tracking applications — so you don't have to do it manually for every
+   single posting.
 
 ## What this is NOT
 
@@ -35,10 +35,10 @@ product spec.
 ## How applications actually happen
 
 - **Official ATS link**: most postings link to a Greenhouse/Lever/Workday
-  application form. Groundwork prepares your tailored resume + cover letter
+  application form. Joby prepares your tailored resume + cover letter
   and hands you a direct link — you review and submit.
 - **Posting-listed inbox**: if a posting itself states an email address to
-  apply to (common for smaller companies), Groundwork drafts that email with
+  apply to (common for smaller companies), Joby drafts that email with
   your tailored resume attached, and you review and send it. This is
   fundamentally different from the system discovering a stranger's email on
   its own — the employer published that address specifically to be emailed.
