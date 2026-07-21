@@ -109,7 +109,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 72px;
+  min-height: 76px;
+  padding: 10px 0;
 }
 
 .logo {
@@ -130,6 +131,27 @@ button {
   align-items: center;
   justify-content: center;
   font-weight: 800;
+}
+
+.logo-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.powered-by {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.powered-by a {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.powered-by a:hover {
+  color: var(--color-primary);
 }
 
 .site-nav {
@@ -156,7 +178,6 @@ button {
 /* ---------- Hero ---------- */
 .hero {
   position: relative;
-  overflow: hidden;
   background: linear-gradient(
     to right,
     #ffffff 0%,
@@ -209,13 +230,19 @@ button {
   margin-bottom: 32px;
 }
 
+.hero-copy {
+  min-width: 0;
+}
+
 .hero-checklist li {
   list-style: none;
   display: flex;
   gap: 8px;
   align-items: flex-start;
+  min-width: 0;
   font-size: 14.5px;
   color: var(--color-text);
+  overflow-wrap: break-word;
 }
 
 .check-icon {
@@ -521,7 +548,9 @@ button {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  max-width: 180px;
+  min-width: 0;
+  max-width: 240px;
+  overflow-wrap: break-word;
 }
 
 .cta-badge .icon {

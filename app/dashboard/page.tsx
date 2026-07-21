@@ -69,9 +69,9 @@ export default function DashboardPage() {
               justifyContent: "center",
             }}
           >
-            G
+            J
           </span>
-          Groundwork
+          Job Application System
         </div>
         <nav className="dash-nav">
           <Link href="/dashboard" className="active">
