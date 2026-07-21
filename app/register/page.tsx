@@ -84,6 +84,7 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
             />
+            <div className="field-hint">Must be at least 8 characters.</div>
           </div>
           <button
             type="submit"
