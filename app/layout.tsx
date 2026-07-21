@@ -3,9 +3,9 @@ import Providers from "./providers";
 import "./globals.css";
 
 export const metadata = {
-  title: "Groundwork — Land your next job, honestly",
+  title: "Job Application System — Land your next job, honestly",
   description:
-    "A free, open-source job-search co-pilot: tailored resumes grounded in your verified skills, job postings sourced from legitimate APIs, applications you always review before they go out.",
+    "A free, open-source job-search co-pilot by ZeroTouchAI: tailored resumes grounded in your verified skills, job postings sourced from legitimate APIs, applications you always review before they go out.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

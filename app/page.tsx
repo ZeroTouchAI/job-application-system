@@ -96,8 +96,16 @@ export default function HomePage() {
       <header className="site-header">
         <div className="container site-header-inner">
           <div className="logo">
-            <span className="logo-mark">G</span>
-            Groundwork
+            <span className="logo-mark">J</span>
+            <div className="logo-block">
+              Job Application System
+              <span className="powered-by">
+                Powered by{" "}
+                <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
+                  ZeroTouchAI.com
+                </a>
+              </span>
+            </div>
           </div>
           <nav className="site-nav">
             <div className="site-nav-links">
@@ -131,7 +139,7 @@ export default function HomePage() {
               Land your next job, <span className="accent">honestly</span>
             </h1>
             <p className="lede">
-              Groundwork finds real postings from legitimate job APIs, tailors a
+              This system finds real postings from legitimate job APIs, tailors a
               resume and cover letter from your verified skills, and never
               invents experience you don&apos;t have.
             </p>
@@ -262,8 +270,8 @@ export default function HomePage() {
           <div>
             <h2>Ready to search smarter?</h2>
             <p>
-              Set up your profile in a few minutes and let Groundwork do the
-              groundwork.
+              Set up your profile in a few minutes and let the system do the
+              legwork.
             </p>
             <div className="cta-actions">
               <Link href="/register" className="btn btn-primary">
@@ -301,7 +309,14 @@ export default function HomePage() {
 
       <footer className="site-footer">
         <div className="container site-footer-inner">
-          <span>&copy; {new Date().getFullYear()} Groundwork. Free &amp; open source.</span>
+          <span>
+            &copy; {new Date().getFullYear()} Job Application System. Free &amp; open
+            source. Powered by{" "}
+            <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
+              ZeroTouchAI.com
+            </a>
+            .
+          </span>
           <a
             href="https://github.com/ZeroTouchAI/job-application-system"
             target="_blank"
