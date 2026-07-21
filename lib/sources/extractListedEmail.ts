@@ -2,7 +2,7 @@
  * Looks for an application email address that the EMPLOYER ITSELF listed
  * inside the posting text (e.g. "Send your resume to jobs@acme.com").
  *
- * This is the one case where Groundwork will draft an outreach email: the
+ * This is the one case where Joby will draft an outreach email: the
  * employer published the address specifically to be emailed about this
  * role. It is fundamentally different from looking up or guessing a
  * person's email via a third-party contact-enrichment service — nothing

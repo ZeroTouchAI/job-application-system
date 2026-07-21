@@ -25,7 +25,7 @@ export default function ProfilePage() {
       <h1>Your profile</h1>
       <p>
         Paste your resume text, or your LinkedIn profile text (copied by hand,
-        or from LinkedIn&apos;s own data export — Groundwork never scrapes
+        or from LinkedIn&apos;s own data export — Joby never scrapes
         LinkedIn on your behalf).
       </p>
       <textarea
