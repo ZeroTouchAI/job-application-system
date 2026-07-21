@@ -98,7 +98,7 @@ export default function HomePage() {
           <div className="logo">
             <span className="logo-mark">J</span>
             <div className="logo-block">
-              Job Application System
+              Joby
               <span className="powered-by">
                 Powered by{" "}
                 <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
@@ -310,7 +310,7 @@ export default function HomePage() {
       <footer className="site-footer">
         <div className="container site-footer-inner">
           <span>
-            &copy; {new Date().getFullYear()} Job Application System. Free &amp; open
+            &copy; {new Date().getFullYear()} Joby. Free &amp; open
             source. Powered by{" "}
             <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
               ZeroTouchAI.com

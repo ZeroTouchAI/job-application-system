@@ -71,7 +71,7 @@ export default function DashboardPage() {
           >
             J
           </span>
-          Job Application System
+          Joby
         </div>
         <nav className="dash-nav">
           <Link href="/dashboard" className="active">
