@@ -1,15 +1,19 @@
 import type { ReactNode } from "react";
+import Providers from "./providers";
+import "./globals.css";
 
 export const metadata = {
-  title: "Groundwork",
+  title: "Groundwork — Land your next job, honestly",
   description:
-    "A free, grounded job-search co-pilot: tailored resumes, ToS-compliant job sourcing, application tracking.",
+    "A free, open-source job-search co-pilot: tailored resumes grounded in your verified skills, job postings sourced from legitimate APIs, applications you always review before they go out.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
