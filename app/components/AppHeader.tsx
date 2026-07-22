@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BellIcon, MailIcon, ChevronDownIcon } from "./icons";
+import { BellIcon, MailIcon, ChevronDownIcon } from "../icons";
 
 interface AppHeaderProps {
   active: "dashboard" | "resume" | "jobs";
