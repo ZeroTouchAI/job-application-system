@@ -33,7 +33,7 @@ const STEPS = [
   {
     icon: UploadIcon,
     title: "Add your profile",
-    desc: "Paste your resume or LinkedIn text. We build a verified skills database from it — nothing more.",
+    desc: "Paste your resume or LinkedIn text and we build a verified skills database from it. Nothing more.",
   },
   {
     icon: SearchIcon,
@@ -71,7 +71,7 @@ const FEATURES = [
   {
     icon: MailDraftIcon,
     title: "Email drafts you review",
-    desc: "When a posting lists an application email, we draft it — you always read it and hit send yourself.",
+    desc: "When a posting lists an application email, we draft it, and you always read it and hit send yourself.",
   },
   {
     icon: FileTextIcon,
