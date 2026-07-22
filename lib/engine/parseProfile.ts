@@ -23,7 +23,7 @@ export interface ParseProfileResult {
 
 /**
  * Parses raw pasted resume/LinkedIn text into the structured Profile shape.
- * This is intentionally a *parsing* step, not a rewriting step — bullets
+ * This is intentionally a *parsing* step, not a rewriting step: bullets
  * should come out close to the original wording. Tailoring/rewriting
  * happens later, in the resume-generation step, against the user's
  * explicit direction and a specific job posting.
@@ -72,11 +72,13 @@ export async function parseProfileText(rawText: string): Promise<ParseProfileRes
     return { error: parsed.error };
   }
 
-  // Normalize technicalSkills key naming from the prompt's "name" field
-  // (matches SkillCategory schema) and validate everything strictly
-  // before it's allowed anywhere near generation.
-  const validated = Profile.safeParse(parsed);
+  const sanitized = sanitizeParsedProfile(parsed);
+
+  const validated = Profile.safeParse(sanitized);
   if (!validated.success) {
+    // Log the specific validation issues server-side so this is
+    // diagnosable from Vercel's function logs rather than a guess.
+    console.error("Profile validation failed:", JSON.stringify(validated.error.flatten()));
     return {
       error:
         "Could not parse that into a valid profile. Try pasting plainer text (no tables/columns), or fill in fields manually.",
@@ -84,4 +86,59 @@ export async function parseProfileText(rawText: string): Promise<ParseProfileRes
   }
 
   return { profile: validated.data };
+}
+
+/**
+ * The AI parser is instructed to omit fields it can't find, but models
+ * sometimes return an empty string instead of actually omitting a key.
+ * This converts those empty strings to undefined so optional fields
+ * don't block validation, and backfills required-but-unstated dates
+ * with a clearly-labeled placeholder rather than failing the whole
+ * profile over one missing end date.
+ */
+function sanitizeParsedProfile(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const obj = raw as Record<string, unknown>;
+
+  const emptyToUndefined = (v: unknown) =>
+    typeof v === "string" && v.trim() === "" ? undefined : v;
+
+  const result: Record<string, unknown> = {
+    ...obj,
+    fullName: emptyToUndefined(obj.fullName),
+    email: emptyToUndefined(obj.email),
+    phone: emptyToUndefined(obj.phone),
+    location: emptyToUndefined(obj.location),
+    linkedinUrl: emptyToUndefined(obj.linkedinUrl),
+  };
+
+  if (Array.isArray(obj.workExperience)) {
+    result.workExperience = obj.workExperience.map((job) => {
+      if (typeof job !== "object" || job === null) return job;
+      const j = job as Record<string, unknown>;
+      return {
+        ...j,
+        location: emptyToUndefined(j.location),
+        startDate:
+          typeof j.startDate === "string" && j.startDate.trim() !== ""
+            ? j.startDate
+            : "Not specified",
+        endDate:
+          typeof j.endDate === "string" && j.endDate.trim() !== ""
+            ? j.endDate
+            : "Not specified",
+        bullets: Array.isArray(j.bullets) ? j.bullets : [],
+      };
+    });
+  }
+
+  if (Array.isArray(obj.certifications)) {
+    result.certifications = obj.certifications.map((cert) => {
+      if (typeof cert !== "object" || cert === null) return cert;
+      const c = cert as Record<string, unknown>;
+      return { ...c, issuer: emptyToUndefined(c.issuer), year: emptyToUndefined(c.year) };
+    });
+  }
+
+  return result;
 }

@@ -20,7 +20,7 @@ export type WorkExperienceEntry = z.infer<typeof WorkExperienceEntry>;
 
 export const CertificationEntry = z.object({
   name: z.string(),
-  issuer: z.string(),
+  issuer: z.string().optional(),
   year: z.string().optional(),
   verified: z.literal(true).default(true),
 });
@@ -34,10 +34,10 @@ export type SkillCategory = z.infer<typeof SkillCategory>;
 
 export const Profile = z.object({
   fullName: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z.string().optional(),
   phone: z.string().optional(),
   location: z.string().optional(),
-  linkedinUrl: z.string().url().optional(),
+  linkedinUrl: z.string().optional(),
 
   workExperience: z.array(WorkExperienceEntry).default([]),
   certifications: z.array(CertificationEntry).default([]),
@@ -65,7 +65,7 @@ export const JobPostingAnalysis = z.object({
 });
 export type JobPostingAnalysis = z.infer<typeof JobPostingAnalysis>;
 
-/** One line item in a truth audit — every generated claim traced to source. */
+/** One line item in a truth audit: every generated claim traced to source. */
 export const TruthAuditEntry = z.object({
   claim: z.string(),
   sourceRef: z.string(), // e.g. "workExperience[2].bullets[0]" or "knownGaps"
