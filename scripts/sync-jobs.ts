@@ -47,8 +47,8 @@ async function collectAllPostings(): Promise<RawPosting[]> {
   let anyLocation: string | undefined;
 
   for (const u of users) {
-    u.greenhouseBoards.forEach((b) => greenhouseBoards.add(b));
-    u.leverBoards.forEach((b) => leverBoards.add(b));
+    u.greenhouseBoards.forEach((b: string) => greenhouseBoards.add(b));
+    u.leverBoards.forEach((b: string) => leverBoards.add(b));
     if (u.searchNiche) niches.add(u.searchNiche);
     if (u.searchLocation) anyLocation = u.searchLocation;
   }
