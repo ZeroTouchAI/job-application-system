@@ -38,13 +38,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    // Log the real cause server-side (visible in Vercel's function logs)
-    // instead of letting the function crash into an unparseable response.
     console.error("Registration failed:", err);
     return NextResponse.json(
       {
         error:
-          "Registration failed on the server. This usually means the database connection isn't configured correctly — check DATABASE_URL.",
+          "Registration failed on the server. This usually means the database connection isn't configured correctly. Check DATABASE_URL.",
       },
       { status: 500 }
     );

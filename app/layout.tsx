@@ -3,7 +3,7 @@ import Providers from "./providers";
 import "./globals.css";
 
 export const metadata = {
-  title: "Joby — Land your next job, honestly",
+  title: "Joby: Land your next job, honestly",
   description:
     "A free, open-source job-search co-pilot by ZeroTouchAI: tailored resumes grounded in your verified skills, job postings sourced from legitimate APIs, applications you always review before they go out.",
 };

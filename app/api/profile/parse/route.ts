@@ -57,12 +57,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ profile });
   } catch (err) {
     console.error("Profile parsing failed:", err);
-    return NextResponse.json(
-      {
-        error:
-          "Something went wrong parsing that. Check that GROQ_API_KEY is set correctly, or try again.",
-      },
-      { status: 500 }
-    );
+
+    const message = err instanceof Error ? err.message : String(err);
+    let userMessage =
+      "Something went wrong parsing that. Please try again in a moment.";
+
+    if (message.includes("Groq API error: 401")) {
+      userMessage =
+        "The AI service rejected the request (invalid API key). Double-check GROQ_API_KEY in your deployment's environment variables.";
+    } else if (message.includes("Groq API error: 429")) {
+      userMessage =
+        "The AI service is rate-limited right now. Wait a minute and try again.";
+    } else if (message.includes("Groq API error")) {
+      userMessage = `The AI service returned an error: ${message}`;
+    }
+
+    return NextResponse.json({ error: userMessage }, { status: 500 });
   }
 }
