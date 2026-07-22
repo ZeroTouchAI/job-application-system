@@ -148,7 +148,7 @@ export default function DashboardPage() {
               <div className="match-card-head">
                 <div>
                   <h3>
-                    {app.jobPosting.title} — {app.jobPosting.company}
+                    {app.jobPosting.title} at {app.jobPosting.company}
                   </h3>
                   <div className="meta">
                     {app.jobPosting.location || "Location unspecified"} · Status:{" "}
@@ -184,7 +184,7 @@ export default function DashboardPage() {
                   {app.jobPosting.applyEmail && (
                     <div style={{ color: "var(--color-text-muted)", marginTop: 4 }}>
                       Employer-listed apply email:{" "}
-                      <strong>{app.jobPosting.applyEmail}</strong> — review the
+                      <strong>{app.jobPosting.applyEmail}</strong>. Review the
                       drafted email before sending.
                     </div>
                   )}
