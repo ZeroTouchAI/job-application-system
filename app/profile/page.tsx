@@ -44,7 +44,7 @@ export default function ProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong parsing that.");
+        setError(data.error || "Something went wrong processing that.");
         setStatus("idle");
         return;
       }
@@ -96,7 +96,7 @@ export default function ProfilePage() {
       <section className="profile-hero">
         <div className="container">
           <div className="eyebrow">Step 1</div>
-          <h1>Add your profile</h1>
+          <h1>Add your resume</h1>
           <p>
             Paste your resume text, or your LinkedIn profile text, copied by
             hand or from LinkedIn&apos;s own data export. We only extract
@@ -113,7 +113,7 @@ export default function ProfilePage() {
               <CheckIcon width={22} height={22} />
             </div>
             <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>
-              Profile saved
+              Resume saved
             </h2>
             <p style={{ color: "var(--color-text-muted)", fontSize: 14, marginBottom: 18 }}>
               Here&apos;s what we pulled out. You can refine it anytime.
@@ -172,7 +172,7 @@ export default function ProfilePage() {
                 disabled={status === "saving" || pastedText.trim().length < 40}
                 onClick={handleSave}
               >
-                {status === "saving" ? "Parsing..." : "Save profile"}
+                {status === "saving" ? "Processing..." : "Save resume"}
               </button>
               <Link href="/dashboard" style={{ fontSize: 13.5, color: "var(--color-text-muted)" }}>
                 Skip for now

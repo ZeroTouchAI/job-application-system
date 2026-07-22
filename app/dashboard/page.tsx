@@ -77,7 +77,7 @@ export default function DashboardPage() {
           <Link href="/dashboard" className="active">
             Dashboard
           </Link>
-          <Link href="/profile">Profile</Link>
+          <Link href="/profile">Resume</Link>
           <a
             href="#"
             onClick={(e) => {
@@ -94,7 +94,7 @@ export default function DashboardPage() {
         <div className="dash-topbar">
           <div style={{ fontWeight: 700 }}>Your matches</div>
           <Link href="/profile" className="btn btn-outline btn-sm">
-            Edit profile
+            Edit resume
           </Link>
         </div>
 
@@ -138,7 +138,7 @@ export default function DashboardPage() {
               <div style={{ fontWeight: 600, marginBottom: 4 }}>
                 No matches yet
               </div>
-              Fill out your profile and wait for the next sync, or run one
+              Fill out your resume and wait for the next sync, or run one
               manually with <code>npm run sync-jobs</code>.
             </div>
           )}
