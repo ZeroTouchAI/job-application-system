@@ -34,6 +34,7 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const userId = (session.user as { id: string }).id;
+    const loginEmail = session.user.email;
 
     const fullName = [body.firstName, body.lastName].filter(Boolean).join(" ").trim() || null;
 
@@ -41,7 +42,7 @@ export async function PUT(req: NextRequest) {
       where: { userId },
       update: {
         fullName,
-        email: body.email || null,
+        email: loginEmail || null,
         phone: body.phone || null,
         location: body.city || null,
         linkedinUrl: body.linkedinUrl || null,
@@ -51,7 +52,7 @@ export async function PUT(req: NextRequest) {
       create: {
         userId,
         fullName,
-        email: body.email || null,
+        email: loginEmail || null,
         phone: body.phone || null,
         location: body.city || null,
         linkedinUrl: body.linkedinUrl || null,

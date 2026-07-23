@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BellIcon, MailIcon, ChevronDownIcon, JobyLogoMark } from "../icons";
+import { BellIcon, MailIcon, ChevronDownIcon } from "../icons";
 
 interface AppHeaderProps {
   active: "dashboard" | "resume" | "jobs";
@@ -45,7 +45,7 @@ export default function AppHeader({ active }: AppHeaderProps) {
       <div className="container app-header-inner">
         <Link href="/dashboard" className="app-logo-block-wrap">
           <span className="app-logo-icon">
-            <JobyLogoMark width={22} height={22} />
+            <img src="/joby-logo.png" alt="Joby" width={24} height={24} />
           </span>
           <span className="app-logo-block">
             Joby
