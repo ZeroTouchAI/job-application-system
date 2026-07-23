@@ -36,6 +36,7 @@ export async function generateCoverLetter(
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
+      max_tokens: 2048,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },

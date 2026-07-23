@@ -4,13 +4,13 @@ import type { Profile, JobPostingAnalysis } from "../profileSchema";
 
 /**
  * Uses Groq's free, OpenAI-compatible API (https://api.groq.com/openai/v1)
- * instead of a paid provider — no credit card required to get a key at
+ * instead of a paid provider: no credit card required to get a key at
  * console.groq.com. Swappable later for any other OpenAI-compatible
  * provider by changing GROQ_BASE_URL/GROQ_MODEL.
  */
 const GROQ_BASE_URL = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
 // gpt-oss-120b is Groq's current recommended flagship text model (as of
-// mid-2026) — strong instruction-following for structured JSON output,
+// mid-2026): strong instruction-following for structured JSON output,
 // which matters for the citation format the truth audit depends on.
 const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
@@ -57,6 +57,7 @@ export async function generateResume(
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
+      max_tokens: 4096,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
