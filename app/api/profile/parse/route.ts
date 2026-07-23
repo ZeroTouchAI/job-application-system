@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     const message = err instanceof Error ? err.message : String(err);
     let userMessage =
-      "Something went wrong parsing that. Please try again in a moment.";
+      "Something went wrong processing that. Please try again in a moment.";
 
     if (message.includes("Groq API error: 401")) {
       userMessage =
@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
     } else if (message.includes("Groq API error: 429")) {
       userMessage =
         "The AI service is rate-limited right now. Wait a minute and try again.";
+    } else if (message === "MALFORMED_JSON") {
+      userMessage =
+        "The AI's response got cut off or wasn't valid. This usually happens with very long resumes. Try trimming it down, or try again.";
     } else if (message.includes("Groq API error")) {
       userMessage = `The AI service returned an error: ${message}`;
     }

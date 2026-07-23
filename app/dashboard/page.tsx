@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import AppHeader from "../components/AppHeader";
-import EditProfileModal from "../components/EditProfileModal";
 import { FileTextIcon, MapPinIcon, BriefcaseIcon, LogOutIcon } from "../icons";
 
 interface Application {
@@ -25,6 +25,7 @@ interface ProfileData {
   fullName?: string;
   headline?: string;
   yearsExperience?: string;
+  workExperience?: { employer: string; title: string }[];
   technicalSkills?: { name: string; items: string[] }[];
 }
 
@@ -34,7 +35,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
-  const [editOpen, setEditOpen] = useState(false);
 
   function loadProfile() {
     fetch("/api/profile")
@@ -100,13 +100,6 @@ export default function DashboardPage() {
     <div className="app-shell">
       <AppHeader active="dashboard" />
 
-      {editOpen && (
-        <EditProfileModal
-          onClose={() => setEditOpen(false)}
-          onSaved={loadProfile}
-        />
-      )}
-
       <div className="app-body">
         {/* Left sidebar */}
         <div>
@@ -120,13 +113,13 @@ export default function DashboardPage() {
             {!profile?.headline && !profile?.yearsExperience && (
               <div className="experience">Add your details</div>
             )}
-            <button
+            <Link
+              href="/account"
               className="btn btn-primary btn-sm"
               style={{ width: "100%" }}
-              onClick={() => setEditOpen(true)}
             >
               Edit profile
-            </button>
+            </Link>
           </div>
 
           <div className="side-card">
@@ -304,6 +297,29 @@ export default function DashboardPage() {
                 <div className="label">Average</div>
               </div>
             </div>
+          </div>
+
+          <div className="side-card">
+            <div className="side-card-title">Current resume</div>
+            {profile?.fullName ? (
+              <>
+                <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>
+                  {profile.fullName}
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginBottom: 12 }}>
+                  {(profile.workExperience || []).length} work experience entr
+                  {(profile.workExperience || []).length === 1 ? "y" : "ies"} &middot;{" "}
+                  {(profile.technicalSkills || []).reduce((n, c) => n + c.items.length, 0)} skills
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginBottom: 12 }}>
+                No resume on file yet.
+              </div>
+            )}
+            <Link href="/profile" className="btn btn-outline btn-sm" style={{ width: "100%" }}>
+              {profile?.fullName ? "Update resume" : "Add resume"}
+            </Link>
           </div>
         </div>
       </div>

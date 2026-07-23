@@ -46,6 +46,7 @@ export async function parseProfileText(rawText: string): Promise<ParseProfileRes
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
+      max_tokens: 4096,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
@@ -66,7 +67,14 @@ export async function parseProfileText(rawText: string): Promise<ParseProfileRes
   }
 
   const cleaned = content.replace(/```json|```/g, "").trim();
-  const parsed = JSON.parse(cleaned);
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (parseErr) {
+    console.error("Failed to parse Groq JSON output:", cleaned.slice(0, 500));
+    throw new Error("MALFORMED_JSON");
+  }
 
   if (parsed.error) {
     return { error: parsed.error };
