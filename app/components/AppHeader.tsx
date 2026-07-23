@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BellIcon, MailIcon, ChevronDownIcon } from "../icons";
+import { BellIcon, MailIcon, ChevronDownIcon, JobyLogoMark } from "../icons";
 
 interface AppHeaderProps {
   active: "dashboard" | "resume" | "jobs";
@@ -43,13 +43,18 @@ export default function AppHeader({ active }: AppHeaderProps) {
   return (
     <header className="app-header">
       <div className="container app-header-inner">
-        <Link href="/dashboard" className="app-logo-block">
-          Joby
-          <span className="powered-by">
-            Powered by{" "}
-            <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
-              ZeroTouchAI.com
-            </a>
+        <Link href="/dashboard" className="app-logo-block-wrap">
+          <span className="app-logo-icon">
+            <JobyLogoMark width={22} height={22} />
+          </span>
+          <span className="app-logo-block">
+            Joby
+            <span className="powered-by">
+              Powered by{" "}
+              <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
+                ZeroTouchAI.com
+              </a>
+            </span>
           </span>
         </Link>
 

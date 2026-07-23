@@ -42,6 +42,11 @@ model Profile {
   location    String?
   linkedinUrl String?
 
+  /// Field/classification the user works in, e.g. "AI & Automation".
+  /// Shown on the dashboard profile block, editable via the profile modal.
+  headline        String?
+  yearsExperience String?
+
   // JSON blobs matching the shapes in lib/profileSchema.ts (Zod-validated
   // on write). Kept as JSON rather than fully normalized tables so the
   // schema can evolve without constant migrations.

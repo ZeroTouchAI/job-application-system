@@ -129,3 +129,45 @@ export const MapPinIcon = (props: SVGProps<SVGSVGElement>) => (
     <circle cx="12" cy="10" r="3" />
   </svg>
 );
+
+/**
+ * Compound Joby logo mark: a magnifying glass (searching for jobs)
+ * layered with a simplified person-in-a-tie silhouette (the job
+ * seeker/professional). Single-color, stroke-based to match the rest
+ * of the icon set.
+ */
+export const JobyLogoMark = (props: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 32 32" fill="none" {...props}>
+    {/* person: head + shoulders + tie */}
+    <circle cx="13" cy="10" r="4" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M6 25c0-4.4 3.6-7 7-7s7 2.6 7 7"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M12 14.5 13 17l-1.2 2.5 1.2 2 1.2-2L13 17l1-2.5"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    {/* magnifying glass, overlapping bottom-right */}
+    <circle cx="22" cy="20" r="5.5" stroke="currentColor" strokeWidth="2.2" />
+    <path
+      d="m26 24 4 4"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const LogOutIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg {...base(props)}>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="m16 17 5-5-5-5" />
+    <path d="M21 12H9" />
+  </svg>
+);

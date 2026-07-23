@@ -11,7 +11,15 @@ export async function GET() {
 
   const profile = await db.profile.findUnique({
     where: { userId: (session.user as { id: string }).id },
-    select: { fullName: true, email: true, phone: true, location: true, linkedinUrl: true },
+    select: {
+      fullName: true,
+      email: true,
+      phone: true,
+      location: true,
+      linkedinUrl: true,
+      headline: true,
+      yearsExperience: true,
+    },
   });
 
   return NextResponse.json({ account: profile });
@@ -37,6 +45,8 @@ export async function PUT(req: NextRequest) {
         phone: body.phone || null,
         location: body.city || null,
         linkedinUrl: body.linkedinUrl || null,
+        headline: body.headline || null,
+        yearsExperience: body.yearsExperience || null,
       },
       create: {
         userId,
@@ -45,8 +55,18 @@ export async function PUT(req: NextRequest) {
         phone: body.phone || null,
         location: body.city || null,
         linkedinUrl: body.linkedinUrl || null,
+        headline: body.headline || null,
+        yearsExperience: body.yearsExperience || null,
       },
-      select: { fullName: true, email: true, phone: true, location: true, linkedinUrl: true },
+      select: {
+        fullName: true,
+        email: true,
+        phone: true,
+        location: true,
+        linkedinUrl: true,
+        headline: true,
+        yearsExperience: true,
+      },
     });
 
     return NextResponse.json({ account: profile });
