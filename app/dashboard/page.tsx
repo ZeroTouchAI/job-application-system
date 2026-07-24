@@ -21,6 +21,13 @@ interface Application {
   };
 }
 
+interface SearchSettings {
+  searchNiche?: string | null;
+  searchLocation?: string | null;
+  searchRemoteOnly?: boolean;
+  searchKeywords?: string[];
+}
+
 interface ProfileData {
   fullName?: string;
   headline?: string;
@@ -32,6 +39,7 @@ interface ProfileData {
 export default function DashboardPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [searchSettings, setSearchSettings] = useState<SearchSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
@@ -50,6 +58,11 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
 
     loadProfile();
+
+    fetch("/api/user/search-settings")
+      .then((r) => r.json())
+      .then((data) => setSearchSettings(data.settings))
+      .catch(() => {});
   }, []);
 
   async function handleGenerate(applicationId: string) {
@@ -119,6 +132,39 @@ export default function DashboardPage() {
               style={{ width: "100%" }}
             >
               Edit profile
+            </Link>
+          </div>
+
+          <div className="side-card">
+            <div className="side-card-title">Job search</div>
+            {searchSettings?.searchNiche || searchSettings?.searchLocation ? (
+              <>
+                {searchSettings.searchNiche && (
+                  <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>
+                    {searchSettings.searchNiche}
+                  </div>
+                )}
+                <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginBottom: 10 }}>
+                  {searchSettings.searchLocation || "Any location"}
+                  {searchSettings.searchRemoteOnly ? " · Remote only" : ""}
+                </div>
+                {searchSettings.searchKeywords && searchSettings.searchKeywords.length > 0 && (
+                  <div className="skill-chip-row" style={{ marginBottom: 10 }}>
+                    {searchSettings.searchKeywords.map((kw) => (
+                      <span className="skill-chip" key={kw}>
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginBottom: 10 }}>
+                No search criteria set yet.
+              </div>
+            )}
+            <Link href="/jobs" className="btn btn-outline btn-sm" style={{ width: "100%" }}>
+              {searchSettings?.searchNiche ? "Edit search criteria" : "Set search criteria"}
             </Link>
           </div>
 
