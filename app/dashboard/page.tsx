@@ -21,11 +21,12 @@ interface Application {
   };
 }
 
-interface SearchSettings {
-  searchNiche?: string | null;
-  searchLocation?: string | null;
-  searchRemoteOnly?: boolean;
-  searchKeywords?: string[];
+interface SearchCriteria {
+  id: string;
+  niche: string;
+  location: string | null;
+  remoteOnly: boolean;
+  keywords: string[];
 }
 
 interface ProfileData {
@@ -39,7 +40,7 @@ interface ProfileData {
 export default function DashboardPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [searchSettings, setSearchSettings] = useState<SearchSettings | null>(null);
+  const [searchCriteriaList, setSearchCriteriaList] = useState<SearchCriteria[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
@@ -61,7 +62,7 @@ export default function DashboardPage() {
 
     fetch("/api/user/search-settings")
       .then((r) => r.json())
-      .then((data) => setSearchSettings(data.settings))
+      .then((data) => setSearchCriteriaList(data.criteria || []))
       .catch(() => {});
   }, []);
 
@@ -137,34 +138,25 @@ export default function DashboardPage() {
 
           <div className="side-card">
             <div className="side-card-title">Job search</div>
-            {searchSettings?.searchNiche || searchSettings?.searchLocation ? (
-              <>
-                {searchSettings.searchNiche && (
-                  <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>
-                    {searchSettings.searchNiche}
+            {searchCriteriaList.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
+                {searchCriteriaList.map((c) => (
+                  <div key={c.id} style={{ paddingBottom: 8, borderBottom: "1px solid var(--color-border)" }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{c.niche}</div>
+                    <div style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+                      {c.location || "Any location"}
+                      {c.remoteOnly ? " · Remote only" : ""}
+                    </div>
                   </div>
-                )}
-                <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginBottom: 10 }}>
-                  {searchSettings.searchLocation || "Any location"}
-                  {searchSettings.searchRemoteOnly ? " · Remote only" : ""}
-                </div>
-                {searchSettings.searchKeywords && searchSettings.searchKeywords.length > 0 && (
-                  <div className="skill-chip-row" style={{ marginBottom: 10 }}>
-                    {searchSettings.searchKeywords.map((kw) => (
-                      <span className="skill-chip" key={kw}>
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
+                ))}
+              </div>
             ) : (
               <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginBottom: 10 }}>
                 No search criteria set yet.
               </div>
             )}
             <Link href="/jobs" className="btn btn-outline btn-sm" style={{ width: "100%" }}>
-              {searchSettings?.searchNiche ? "Edit search criteria" : "Set search criteria"}
+              {searchCriteriaList.length > 0 ? "Add or edit searches" : "Set search criteria"}
             </Link>
           </div>
 

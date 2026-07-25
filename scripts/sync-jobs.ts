@@ -23,14 +23,7 @@ import type { RawPosting } from "../lib/sources/arbeitnow";
 import type { JobPostingAnalysis, Profile } from "../lib/profileSchema";
 
 async function collectAllPostings(): Promise<RawPosting[]> {
-  const users = await db.user.findMany({
-    select: {
-      searchNiche: true,
-      searchLocation: true,
-      greenhouseBoards: true,
-      leverBoards: true,
-    },
-  });
+  const allCriteria = await db.searchCriteria.findMany();
 
   const defaultGreenhouse = (process.env.GREENHOUSE_DEFAULT_BOARDS || "")
     .split(",")
@@ -43,25 +36,27 @@ async function collectAllPostings(): Promise<RawPosting[]> {
 
   const greenhouseBoards = new Set(defaultGreenhouse);
   const leverBoards = new Set(defaultLever);
-  const niches = new Set<string>();
-  let anyLocation: string | undefined;
 
-  for (const u of users) {
-    u.greenhouseBoards.forEach((b: string) => greenhouseBoards.add(b));
-    u.leverBoards.forEach((b: string) => leverBoards.add(b));
-    if (u.searchNiche) niches.add(u.searchNiche);
-    if (u.searchLocation) anyLocation = u.searchLocation;
+  for (const c of allCriteria) {
+    c.greenhouseBoards.forEach((b: string) => greenhouseBoards.add(b));
+    c.leverBoards.forEach((b: string) => leverBoards.add(b));
   }
 
   const results: RawPosting[] = [];
 
-  // Arbeitnow: one call per distinct niche keyword users have set.
-  for (const niche of niches.size ? niches : [""]) {
+  // Arbeitnow: one call per distinct saved search (niche + location),
+  // so each tracked role gets its own targeted results rather than
+  // everything being blended into one generic query.
+  const searches = allCriteria.length
+    ? allCriteria.map((c: { niche: string; location: string | null }) => ({
+        keyword: c.niche,
+        location: c.location || undefined,
+      }))
+    : [{ keyword: undefined, location: undefined }];
+
+  for (const search of searches) {
     try {
-      const jobs = await fetchArbeitnowJobs({
-        keyword: niche || undefined,
-        location: anyLocation,
-      });
+      const jobs = await fetchArbeitnowJobs(search);
       results.push(...jobs);
     } catch (err) {
       console.error("Arbeitnow fetch failed:", err);

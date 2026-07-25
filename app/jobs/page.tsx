@@ -3,40 +3,46 @@
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
 
-export default function JobSearchSettingsPage() {
-  const [searchNiche, setSearchNiche] = useState("");
-  const [searchLocation, setSearchLocation] = useState("");
-  const [searchRemoteOnly, setSearchRemoteOnly] = useState(false);
-  const [searchKeywords, setSearchKeywords] = useState("");
-  const [greenhouseBoards, setGreenhouseBoards] = useState("");
-  const [leverBoards, setLeverBoards] = useState("");
+interface SearchCriteria {
+  id: string;
+  niche: string;
+  location: string | null;
+  remoteOnly: boolean;
+  keywords: string[];
+  greenhouseBoards: string[];
+  leverBoards: string[];
+}
 
+export default function JobSearchSettingsPage() {
+  const [criteriaList, setCriteriaList] = useState<SearchCriteria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Add-new-search form state
+  const [niche, setNiche] = useState("");
+  const [location, setLocation] = useState("");
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [keywords, setKeywords] = useState("");
+  const [greenhouseBoards, setGreenhouseBoards] = useState("");
+  const [leverBoards, setLeverBoards] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  function loadCriteria() {
     fetch("/api/user/search-settings")
       .then((r) => {
-        if (!r.ok) throw new Error(`Failed to load settings (${r.status})`);
+        if (!r.ok) throw new Error(`Failed to load (${r.status})`);
         return r.json();
       })
-      .then((data) => {
-        const s = data.settings;
-        if (!s) return;
-        setSearchNiche(s.searchNiche || "");
-        setSearchLocation(s.searchLocation || "");
-        setSearchRemoteOnly(!!s.searchRemoteOnly);
-        setSearchKeywords((s.searchKeywords || []).join(", "));
-        setGreenhouseBoards((s.greenhouseBoards || []).join(", "));
-        setLeverBoards((s.leverBoards || []).join(", "));
-      })
+      .then((data) => setCriteriaList(data.criteria || []))
       .catch((err) => {
-        console.error("Failed to load search settings:", err);
-        setError("Couldn't load your saved settings. You can still fill in the form below.");
+        console.error("Failed to load search criteria:", err);
+        setError("Couldn't load your saved searches.");
       })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadCriteria();
   }, []);
 
   function splitList(v: string): string[] {
@@ -46,20 +52,23 @@ export default function JobSearchSettingsPage() {
       .filter(Boolean);
   }
 
-  async function handleSave() {
-    setSaving(true);
-    setSaved(false);
+  async function handleAdd() {
     setError(null);
+    if (!niche.trim()) {
+      setError("Enter a job title or niche first.");
+      return;
+    }
 
+    setSaving(true);
     try {
       const res = await fetch("/api/user/search-settings", {
-        method: "PUT",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          searchNiche,
-          searchLocation,
-          searchRemoteOnly,
-          searchKeywords: splitList(searchKeywords),
+          niche,
+          location,
+          remoteOnly,
+          keywords: splitList(keywords),
           greenhouseBoards: splitList(greenhouseBoards),
           leverBoards: splitList(leverBoards),
         }),
@@ -71,11 +80,30 @@ export default function JobSearchSettingsPage() {
         return;
       }
 
-      setSaved(true);
+      // Clear the form and refresh the list rather than replacing anything.
+      setNiche("");
+      setLocation("");
+      setRemoteOnly(false);
+      setKeywords("");
+      setGreenhouseBoards("");
+      setLeverBoards("");
+      loadCriteria();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setCriteriaList((prev) => prev.filter((c) => c.id !== id));
+    try {
+      const res = await fetch(`/api/user/search-settings/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        loadCriteria(); // revert the optimistic removal if it actually failed
+      }
+    } catch {
+      loadCriteria();
     }
   }
 
@@ -88,112 +116,134 @@ export default function JobSearchSettingsPage() {
           <div className="eyebrow">Step 2</div>
           <h1>Add/Edit jobs</h1>
           <p>
-            Tell us what you&apos;re looking for. We use this to pull relevant
-            postings from legitimate public job APIs on a schedule, and to
-            score how well each one matches your resume.
+            Add every role or niche you want tracked. Each one gets pulled
+            from legitimate public job APIs on a schedule and scored against
+            your resume, independently.
           </p>
         </div>
       </section>
 
       <div className="profile-body">
-        <div className="profile-card">
-          {loading ? (
-            <div>Loading your settings...</div>
-          ) : (
-            <>
-              {error && <div className="form-error">{error}</div>}
-              {saved && (
+        {error && <div className="form-error">{error}</div>}
+
+        {!loading && criteriaList.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            {criteriaList.map((c) => (
+              <div className="profile-card" key={c.id} style={{ marginBottom: 12 }}>
                 <div
                   style={{
-                    background: "var(--color-primary-soft)",
-                    color: "var(--color-primary)",
-                    fontSize: 13,
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    marginBottom: 16,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 8,
                   }}
                 >
-                  Saved. New matches will show up after the next sync.
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{c.niche}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--color-text-muted)" }}>
+                      {c.location || "Any location"}
+                      {c.remoteOnly ? " · Remote only" : ""}
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => handleDelete(c.id)}
+                    style={{ color: "#b42318", borderColor: "#f3b3ab" }}
+                  >
+                    Remove
+                  </button>
                 </div>
-              )}
-
-              <div className="field">
-                <label htmlFor="niche">Job title or niche</label>
-                <input
-                  id="niche"
-                  type="text"
-                  value={searchNiche}
-                  onChange={(e) => setSearchNiche(e.target.value)}
-                  placeholder="e.g. Operations Coordinator, Data Analyst"
-                />
-                <div className="field-hint">The main role or field you&apos;re targeting.</div>
+                {c.keywords.length > 0 && (
+                  <div className="skill-chip-row">
+                    {c.keywords.map((kw) => (
+                      <span className="skill-chip" key={kw}>
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
+            ))}
+          </div>
+        )}
 
-              <div className="field">
-                <label htmlFor="location">Location</label>
-                <input
-                  id="location"
-                  type="text"
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
-                  placeholder="e.g. Toronto, ON"
-                />
-              </div>
+        <div className="profile-card">
+          <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>
+            Add a new search
+          </h2>
 
-              <div className="field">
-                <label className="filter-checkbox" style={{ marginBottom: 0 }}>
-                  <input
-                    type="checkbox"
-                    checked={searchRemoteOnly}
-                    onChange={(e) => setSearchRemoteOnly(e.target.checked)}
-                  />
-                  Remote roles only
-                </label>
-              </div>
+          <div className="field">
+            <label htmlFor="niche">Job title or niche</label>
+            <input
+              id="niche"
+              type="text"
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              placeholder="e.g. Operations Coordinator, Data Analyst"
+            />
+          </div>
 
-              <div className="field">
-                <label htmlFor="keywords">Additional keywords</label>
-                <input
-                  id="keywords"
-                  type="text"
-                  value={searchKeywords}
-                  onChange={(e) => setSearchKeywords(e.target.value)}
-                  placeholder="e.g. logistics, scheduling, Excel"
-                />
-                <div className="field-hint">Comma-separated. Optional.</div>
-              </div>
+          <div className="field">
+            <label htmlFor="location">Location</label>
+            <input
+              id="location"
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Toronto, ON"
+            />
+          </div>
 
-              <div className="field">
-                <label htmlFor="greenhouse">Specific companies (Greenhouse)</label>
-                <input
-                  id="greenhouse"
-                  type="text"
-                  value={greenhouseBoards}
-                  onChange={(e) => setGreenhouseBoards(e.target.value)}
-                  placeholder="e.g. stripe, airbnb"
-                />
-                <div className="field-hint">
-                  Comma-separated company board names. Optional, for companies you specifically want to track.
-                </div>
-              </div>
+          <div className="field">
+            <label className="filter-checkbox" style={{ marginBottom: 0 }}>
+              <input
+                type="checkbox"
+                checked={remoteOnly}
+                onChange={(e) => setRemoteOnly(e.target.checked)}
+              />
+              Remote roles only
+            </label>
+          </div>
 
-              <div className="field">
-                <label htmlFor="lever">Specific companies (Lever)</label>
-                <input
-                  id="lever"
-                  type="text"
-                  value={leverBoards}
-                  onChange={(e) => setLeverBoards(e.target.value)}
-                  placeholder="e.g. netflix"
-                />
-                <div className="field-hint">Comma-separated. Optional.</div>
-              </div>
+          <div className="field">
+            <label htmlFor="keywords">Additional keywords</label>
+            <input
+              id="keywords"
+              type="text"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              placeholder="e.g. logistics, scheduling, Excel"
+            />
+            <div className="field-hint">Comma-separated. Optional.</div>
+          </div>
 
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : "Save search settings"}
-              </button>
-            </>
-          )}
+          <div className="field">
+            <label htmlFor="greenhouse">Specific companies (Greenhouse)</label>
+            <input
+              id="greenhouse"
+              type="text"
+              value={greenhouseBoards}
+              onChange={(e) => setGreenhouseBoards(e.target.value)}
+              placeholder="e.g. stripe, airbnb"
+            />
+            <div className="field-hint">Comma-separated. Optional.</div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="lever">Specific companies (Lever)</label>
+            <input
+              id="lever"
+              type="text"
+              value={leverBoards}
+              onChange={(e) => setLeverBoards(e.target.value)}
+              placeholder="e.g. netflix"
+            />
+            <div className="field-hint">Comma-separated. Optional.</div>
+          </div>
+
+          <button className="btn btn-primary" onClick={handleAdd} disabled={saving}>
+            {saving ? "Adding..." : "Add search"}
+          </button>
         </div>
       </div>
     </div>
