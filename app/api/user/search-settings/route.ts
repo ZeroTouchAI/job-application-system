@@ -9,22 +9,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await db.user.findUnique({
-    where: { id: (session.user as { id: string }).id },
-    select: {
-      searchNiche: true,
-      searchLocation: true,
-      searchRemoteOnly: true,
-      searchKeywords: true,
-      greenhouseBoards: true,
-      leverBoards: true,
-    },
+  const criteria = await db.searchCriteria.findMany({
+    where: { userId: (session.user as { id: string }).id },
+    orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ settings: user });
+  return NextResponse.json({ criteria });
 }
 
-export async function PUT(req: NextRequest) {
+/**
+ * Adds a new saved search. Does NOT overwrite existing ones — a user
+ * can have several searches (e.g. different roles/niches) tracked at
+ * the same time, each surfaced separately on the dashboard.
+ */
+export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,30 +30,30 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
+    const userId = (session.user as { id: string }).id;
 
-    const user = await db.user.update({
-      where: { id: (session.user as { id: string }).id },
+    if (!body.niche || typeof body.niche !== "string" || !body.niche.trim()) {
+      return NextResponse.json(
+        { error: "A job title or niche is required." },
+        { status: 400 }
+      );
+    }
+
+    const created = await db.searchCriteria.create({
       data: {
-        searchNiche: body.searchNiche || null,
-        searchLocation: body.searchLocation || null,
-        searchRemoteOnly: !!body.searchRemoteOnly,
-        searchKeywords: Array.isArray(body.searchKeywords) ? body.searchKeywords : [],
+        userId,
+        niche: body.niche.trim(),
+        location: body.location || null,
+        remoteOnly: !!body.remoteOnly,
+        keywords: Array.isArray(body.keywords) ? body.keywords : [],
         greenhouseBoards: Array.isArray(body.greenhouseBoards) ? body.greenhouseBoards : [],
         leverBoards: Array.isArray(body.leverBoards) ? body.leverBoards : [],
       },
-      select: {
-        searchNiche: true,
-        searchLocation: true,
-        searchRemoteOnly: true,
-        searchKeywords: true,
-        greenhouseBoards: true,
-        leverBoards: true,
-      },
     });
 
-    return NextResponse.json({ settings: user });
+    return NextResponse.json({ criteria: created });
   } catch (err) {
-    console.error("Saving search settings failed:", err);
+    console.error("Saving search criteria failed:", err);
     return NextResponse.json(
       { error: "Something went wrong saving that. Please try again." },
       { status: 500 }

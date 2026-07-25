@@ -13,19 +13,30 @@ model User {
   passwordHash  String
   createdAt     DateTime  @default(now())
 
-  // Saved job-search criteria, reused every sync run.
-  searchNiche       String?
-  searchLocation    String?
-  searchRemoteOnly  Boolean  @default(false)
-  searchKeywords    String[] @default([])
   syncFrequencyDays Int      @default(3)
 
-  // Optional user-added source board slugs.
+  profile        Profile?
+  applications    Application[]
+  searchCriteria  SearchCriteria[]
+}
+
+/// One saved job search. A user can have several of these at once
+/// (e.g. "Software Engineer" and "Data Analyst" tracked in parallel).
+model SearchCriteria {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  niche            String
+  location         String?
+  remoteOnly       Boolean  @default(false)
+  keywords         String[] @default([])
+
+  // Optional specific companies to always include for this search.
   greenhouseBoards String[] @default([])
   leverBoards      String[] @default([])
 
-  profile      Profile?
-  applications Application[]
+  createdAt        DateTime @default(now())
 }
 
 /// The verified skills database — single source of truth for all
