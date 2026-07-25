@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import AppHeader from "../components/AppHeader";
 import {
   UploadIcon,
   ShieldIcon,
@@ -59,39 +59,7 @@ export default function ProfilePage() {
 
   return (
     <div className="profile-shell">
-      <header className="site-header">
-        <div className="container site-header-inner">
-          <div className="logo">
-            <span className="logo-mark">J</span>
-            <div className="logo-block">
-              Joby
-              <span className="powered-by">
-                Powered by{" "}
-                <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
-                  ZeroTouchAI.com
-                </a>
-              </span>
-            </div>
-          </div>
-          <nav className="site-nav">
-            <div className="site-nav-actions">
-              <Link href="/dashboard" className="btn btn-outline btn-sm">
-                Dashboard
-              </Link>
-              <a
-                href="#"
-                className="btn btn-outline btn-sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  signOut({ callbackUrl: "/" });
-                }}
-              >
-                Log out
-              </a>
-            </div>
-          </nav>
-        </div>
-      </header>
+      <AppHeader active="resume" />
 
       <section className="profile-hero">
         <div className="container">
