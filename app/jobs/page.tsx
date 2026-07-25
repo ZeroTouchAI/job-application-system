@@ -126,47 +126,6 @@ export default function JobSearchSettingsPage() {
       <div className="profile-body">
         {error && <div className="form-error">{error}</div>}
 
-        {!loading && criteriaList.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            {criteriaList.map((c) => (
-              <div className="profile-card" key={c.id} style={{ marginBottom: 12 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: 8,
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{c.niche}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--color-text-muted)" }}>
-                      {c.location || "Any location"}
-                      {c.remoteOnly ? " · Remote only" : ""}
-                    </div>
-                  </div>
-                  <button
-                    className="btn btn-outline btn-sm"
-                    onClick={() => handleDelete(c.id)}
-                    style={{ color: "#b42318", borderColor: "#f3b3ab" }}
-                  >
-                    Remove
-                  </button>
-                </div>
-                {c.keywords.length > 0 && (
-                  <div className="skill-chip-row">
-                    {c.keywords.map((kw) => (
-                      <span className="skill-chip" key={kw}>
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
         <div className="profile-card">
           <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>
             Add a new search
@@ -245,6 +204,56 @@ export default function JobSearchSettingsPage() {
             {saving ? "Adding..." : "Add search"}
           </button>
         </div>
+
+        {loading && (
+          <div className="empty-state" style={{ marginTop: 16 }}>
+            Loading your saved searches...
+          </div>
+        )}
+
+        {!loading && criteriaList.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <div className="side-card-title" style={{ marginBottom: 12 }}>
+              Your saved searches
+            </div>
+            {criteriaList.map((c) => (
+              <div className="profile-card" key={c.id} style={{ marginBottom: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 8,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{c.niche}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--color-text-muted)" }}>
+                      {c.location || "Any location"}
+                      {c.remoteOnly ? " · Remote only" : ""}
+                    </div>
+                  </div>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => handleDelete(c.id)}
+                    style={{ color: "#b42318", borderColor: "#f3b3ab" }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                {c.keywords.length > 0 && (
+                  <div className="skill-chip-row">
+                    {c.keywords.map((kw) => (
+                      <span className="skill-chip" key={kw}>
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
