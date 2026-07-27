@@ -33,6 +33,10 @@ interface ProfileData {
   fullName?: string;
   headline?: string;
   yearsExperience?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedinUrl?: string;
   workExperience?: { employer: string; title: string }[];
   technicalSkills?: { name: string; items: string[] }[];
 }
@@ -104,8 +108,6 @@ export default function DashboardPage() {
     ? Math.round(applications.reduce((sum, a) => sum + a.matchScore, 0) / applications.length)
     : 0;
 
-  const skillChips = (profile?.technicalSkills || []).flatMap((c) => c.items).slice(0, 8);
-
   const initials = profile?.fullName
     ? profile.fullName.split(" ").filter(Boolean).slice(0, 2).map((n) => n[0]?.toUpperCase()).join("")
     : "?";
@@ -127,6 +129,32 @@ export default function DashboardPage() {
             {!profile?.headline && !profile?.yearsExperience && (
               <div className="experience">Add your details</div>
             )}
+
+            {(profile?.location || profile?.phone || profile?.email || profile?.linkedinUrl) && (
+              <div
+                style={{
+                  textAlign: "left",
+                  fontSize: 12.5,
+                  color: "var(--color-text-muted)",
+                  marginBottom: 14,
+                  borderTop: "1px solid var(--color-border)",
+                  paddingTop: 10,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                {profile?.location && <div>{profile.location}</div>}
+                {profile?.phone && <div>{profile.phone}</div>}
+                {profile?.email && <div>{profile.email}</div>}
+                {profile?.linkedinUrl && (
+                  <div style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {profile.linkedinUrl}
+                  </div>
+                )}
+              </div>
+            )}
+
             <Link
               href="/account"
               className="btn btn-primary btn-sm"
@@ -183,19 +211,6 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-
-          {skillChips.length > 0 && (
-            <div className="side-card">
-              <div className="side-card-title">Top skills</div>
-              <div className="skill-chip-row">
-                {skillChips.map((skill) => (
-                  <span className="skill-chip" key={skill}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
 
           <button
             className="sidebar-logout-btn"
