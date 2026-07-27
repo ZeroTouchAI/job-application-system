@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
@@ -30,6 +30,14 @@ export default function ProfilePage() {
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedProfile | null>(null);
+  const [skills, setSkills] = useState<{ name: string; items: string[] }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((data) => setSkills(data.profile?.technicalSkills || []))
+      .catch(() => {});
+  }, []);
 
   async function handleSave() {
     setError(null);
@@ -50,6 +58,7 @@ export default function ProfilePage() {
       }
 
       setParsed(data.profile);
+      setSkills(data.profile?.technicalSkills || []);
       setStatus("done");
     } catch {
       setError("Something went wrong. Please try again.");
@@ -145,6 +154,21 @@ export default function ProfilePage() {
               <Link href="/dashboard" style={{ fontSize: 13.5, color: "var(--color-text-muted)" }}>
                 Skip for now
               </Link>
+            </div>
+          </div>
+        )}
+
+        {skills.length > 0 && (
+          <div className="profile-card">
+            <div className="side-card-title" style={{ marginBottom: 12 }}>
+              Top skills
+            </div>
+            <div className="skill-chip-row">
+              {skills.flatMap((c) => c.items).map((skill) => (
+                <span className="skill-chip" key={skill}>
+                  {skill}
+                </span>
+              ))}
             </div>
           </div>
         )}
