@@ -173,7 +173,11 @@ async function main() {
 
       // Only surface postings above a minimal relevance bar to avoid
       // flooding the dashboard.
-      if (match.matchScore < 40) continue;
+      // NOTE: lowered from 40 while the match scoring is still based on
+      // crude keyword overlap rather than a richer comparison - a strict
+      // threshold here can hide genuinely relevant postings. Revisit
+      // once matchEngine.ts scoring is improved (e.g. LLM-assisted).
+      if (match.matchScore < 15) continue;
 
       await db.application.upsert({
         where: { userId_jobPostingId: { userId: user.id, jobPostingId: id } },

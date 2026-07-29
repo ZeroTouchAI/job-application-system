@@ -364,6 +364,15 @@ export default function DashboardPage() {
                   {(profile.workExperience || []).length === 1 ? "y" : "ies"} &middot;{" "}
                   {(profile.technicalSkills || []).reduce((n, c) => n + c.items.length, 0)} skills
                 </div>
+                {(profile.technicalSkills || []).length > 0 && (
+                  <div className="skill-chip-row" style={{ marginBottom: 12 }}>
+                    {(profile.technicalSkills || []).flatMap((c) => c.items).map((skill) => (
+                      <span className="skill-chip" key={skill}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <div style={{ fontSize: 12.5, color: "var(--color-text-muted)", marginBottom: 12 }}>
