@@ -29,6 +29,18 @@ interface SearchCriteria {
   keywords: string[];
 }
 
+// Pipeline: suggested (matched, nothing generated yet) -> drafted (resume +
+// cover letter generated, not yet sent) -> applied -> interview -> offer.
+// Reject can happen from any stage and hides the card from view.
+const STATUS_LABELS: Record<string, string> = {
+  suggested: "Suggested",
+  drafted: "Ready to apply",
+  applied: "Applied",
+  interview: "Interview",
+  offer: "Offer",
+  rejected: "Rejected",
+};
+
 interface ProfileData {
   fullName?: string;
   headline?: string;
@@ -96,9 +108,15 @@ export default function DashboardPage() {
   async function handleStatusChange(applicationId: string, status: string) {
     setUpdatingId(applicationId);
     const previous = applications;
-    setApplications((prev) =>
-      prev.map((a) => (a.id === applicationId ? { ...a, status } : a))
-    );
+    // Rejecting removes the card from view entirely (the record is kept
+    // server-side, just excluded from GET /api/jobs going forward).
+    if (status === "rejected") {
+      setApplications((prev) => prev.filter((a) => a.id !== applicationId));
+    } else {
+      setApplications((prev) =>
+        prev.map((a) => (a.id === applicationId ? { ...a, status } : a))
+      );
+    }
     try {
       const res = await fetch(`/api/jobs/${applicationId}`, {
         method: "PATCH",
@@ -226,12 +244,12 @@ export default function DashboardPage() {
                   <div className="status-row" key={app.id}>
                     <div className="info">
                       <span className="dot" />
-                      <div>
+                      <div className="status-row-text">
                         <div className="title">{app.jobPosting.title}</div>
                         <div className="company">{app.jobPosting.company}</div>
                       </div>
                     </div>
-                    <span className={`status-pill ${app.status}`}>{app.status}</span>
+                    <span className={`status-pill ${app.status}`}>{STATUS_LABELS[app.status]}</span>
                   </div>
                 ))}
               </div>
@@ -315,7 +333,7 @@ export default function DashboardPage() {
               <div className="job-card-tags">
                 <span className="job-tag">{app.jobPosting.remote ? "Remote" : "Onsite"}</span>
                 <span className="job-tag">{app.jobPosting.source}</span>
-                <span className={`status-pill ${app.status}`}>{app.status}</span>
+                <span className={`status-pill ${app.status}`}>{STATUS_LABELS[app.status]}</span>
               </div>
 
               <div className="job-card-meta-row">
@@ -330,29 +348,59 @@ export default function DashboardPage() {
               </div>
 
               <div className="job-card-actions">
-                <button
-                  className="btn btn-primary btn-sm"
-                  disabled={generatingId === app.id}
-                  onClick={() => handleGenerate(app.id)}
-                >
-                  <FileTextIcon width={15} height={15} />
-                  {generatingId === app.id ? "Generating..." : "Generate resume + cover letter"}
-                </button>
+                {(app.status === "suggested" || app.status === "drafted") && (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={generatingId === app.id}
+                    onClick={() => handleGenerate(app.id)}
+                  >
+                    <FileTextIcon width={15} height={15} />
+                    {generatingId === app.id
+                      ? "Generating..."
+                      : app.status === "drafted"
+                      ? "Regenerate resume + cover letter"
+                      : "Generate resume + cover letter"}
+                  </button>
+                )}
 
-                <select
-                  aria-label="Update application status"
+                {app.status === "drafted" && (
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={updatingId === app.id}
+                    onClick={() => handleStatusChange(app.id, "applied")}
+                  >
+                    Mark as applied
+                  </button>
+                )}
+
+                {app.status === "applied" && (
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={updatingId === app.id}
+                    onClick={() => handleStatusChange(app.id, "interview")}
+                  >
+                    Got an interview
+                  </button>
+                )}
+
+                {app.status === "interview" && (
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={updatingId === app.id}
+                    onClick={() => handleStatusChange(app.id, "offer")}
+                  >
+                    Got an offer
+                  </button>
+                )}
+
+                <button
                   className="btn btn-outline btn-sm"
-                  value={app.status}
+                  style={{ color: "#b42318", borderColor: "#f3b3ab" }}
                   disabled={updatingId === app.id}
-                  onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                  onClick={() => handleStatusChange(app.id, "rejected")}
                 >
-                  <option value="suggested">Suggested</option>
-                  <option value="drafted">Drafted</option>
-                  <option value="applied">Applied</option>
-                  <option value="interview">Interview</option>
-                  <option value="offer">Offer</option>
-                  <option value="rejected">Rejected</option>
-                </select>
+                  Reject
+                </button>
 
                 {app.status === "drafted" && app.jobPosting.applyUrl && (
                   <a
