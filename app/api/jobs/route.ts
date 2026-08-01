@@ -14,7 +14,9 @@ export async function GET() {
   }
 
   const applications = await db.application.findMany({
-    where: { userId: (session.user as { id: string }).id },
+    // Rejected applications are kept in the database but hidden from the
+    // default list — rejecting is a "remove from view" action, not a delete.
+    where: { userId: (session.user as { id: string }).id, status: { not: "rejected" } },
     include: { jobPosting: true },
     orderBy: [{ matchScore: "desc" }, { createdAt: "desc" }],
     take: 50,
