@@ -47,7 +47,9 @@ export default function DashboardPage() {
   const [searchCriteriaList, setSearchCriteriaList] = useState<SearchCriteria[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
+  const [locationText, setLocationText] = useState("");
 
   function loadProfile() {
     fetch("/api/profile")
@@ -91,13 +93,37 @@ export default function DashboardPage() {
     }
   }
 
-  const filtered = useMemo(() => {
-    if (!searchText.trim()) return applications;
-    const q = searchText.toLowerCase();
-    return applications.filter((app) =>
-      `${app.jobPosting.title} ${app.jobPosting.company}`.toLowerCase().includes(q)
+  async function handleStatusChange(applicationId: string, status: string) {
+    setUpdatingId(applicationId);
+    const previous = applications;
+    setApplications((prev) =>
+      prev.map((a) => (a.id === applicationId ? { ...a, status } : a))
     );
-  }, [applications, searchText]);
+    try {
+      const res = await fetch(`/api/jobs/${applicationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) setApplications(previous); // revert on failure
+    } catch {
+      setApplications(previous);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  const filtered = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    const loc = locationText.trim().toLowerCase();
+    return applications.filter((app) => {
+      const matchesText =
+        !q || `${app.jobPosting.title} ${app.jobPosting.company}`.toLowerCase().includes(q);
+      const matchesLocation =
+        !loc || (app.jobPosting.location || "").toLowerCase().includes(loc);
+      return matchesText && matchesLocation;
+    });
+  }, [applications, searchText, locationText]);
 
   const totalJobs = applications.length;
   const draftCount = applications.filter((a) => a.status === "drafted").length;
@@ -233,6 +259,13 @@ export default function DashboardPage() {
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
               />
+              <input
+                type="text"
+                placeholder="City or region..."
+                value={locationText}
+                onChange={(e) => setLocationText(e.target.value)}
+                style={{ borderLeft: "1px solid var(--color-border)", borderRadius: 0 }}
+              />
               <button className="btn btn-primary btn-sm" type="button">
                 Search
               </button>
@@ -282,7 +315,7 @@ export default function DashboardPage() {
               <div className="job-card-tags">
                 <span className="job-tag">{app.jobPosting.remote ? "Remote" : "Onsite"}</span>
                 <span className="job-tag">{app.jobPosting.source}</span>
-                <span className="job-tag">{app.status}</span>
+                <span className={`status-pill ${app.status}`}>{app.status}</span>
               </div>
 
               <div className="job-card-meta-row">
@@ -305,6 +338,21 @@ export default function DashboardPage() {
                   <FileTextIcon width={15} height={15} />
                   {generatingId === app.id ? "Generating..." : "Generate resume + cover letter"}
                 </button>
+
+                <select
+                  aria-label="Update application status"
+                  className="btn btn-outline btn-sm"
+                  value={app.status}
+                  disabled={updatingId === app.id}
+                  onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                >
+                  <option value="suggested">Suggested</option>
+                  <option value="drafted">Drafted</option>
+                  <option value="applied">Applied</option>
+                  <option value="interview">Interview</option>
+                  <option value="offer">Offer</option>
+                  <option value="rejected">Rejected</option>
+                </select>
 
                 {app.status === "drafted" && app.jobPosting.applyUrl && (
                   <a
