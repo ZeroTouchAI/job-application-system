@@ -15,6 +15,11 @@ model User {
 
   syncFrequencyDays Int      @default(3)
 
+  /// How many new matches the most recent sync run created for this user
+  /// (not cumulative — overwritten every run). Backs the header bell badge.
+  lastSyncNewCount Int       @default(0)
+  lastSyncAt       DateTime?
+
   profile        Profile?
   applications    Application[]
   searchCriteria  SearchCriteria[]

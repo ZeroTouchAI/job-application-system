@@ -156,6 +156,8 @@ async function main() {
   for (const user of usersWithProfiles) {
     if (!user.profile) continue;
 
+    let newForUser = 0;
+
     const profile: Profile = {
       fullName: user.profile.fullName ?? undefined,
       email: user.profile.email ?? undefined,
@@ -179,6 +181,13 @@ async function main() {
       // once matchEngine.ts scoring is improved (e.g. LLM-assisted).
       if (match.matchScore < 15) continue;
 
+      // Checked separately (rather than inferred from the upsert result)
+      // so we can tell the user exactly how many NEW matches this run
+      // produced, not how many were touched.
+      const existingApp = await db.application.findUnique({
+        where: { userId_jobPostingId: { userId: user.id, jobPostingId: id } },
+      });
+
       await db.application.upsert({
         where: { userId_jobPostingId: { userId: user.id, jobPostingId: id } },
         update: {
@@ -195,8 +204,14 @@ async function main() {
           status: "suggested",
         },
       });
+      if (!existingApp) newForUser++;
       suggestionsCreated++;
     }
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { lastSyncNewCount: newForUser, lastSyncAt: new Date() },
+    });
   }
 
   console.log(`Sync complete. ${suggestionsCreated} suggestions updated/created.`);

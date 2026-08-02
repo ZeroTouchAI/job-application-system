@@ -12,12 +12,18 @@ interface AppHeaderProps {
 export default function AppHeader({ active }: AppHeaderProps) {
   const [fullName, setFullName] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [newCount, setNewCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
       .then((data) => setFullName(data.profile?.fullName || null))
+      .catch(() => {});
+
+    fetch("/api/notifications")
+      .then((r) => r.json())
+      .then((data) => setNewCount(data.newCount || 0))
       .catch(() => {});
   }, []);
 
@@ -71,8 +77,14 @@ export default function AppHeader({ active }: AppHeaderProps) {
         </nav>
 
         <div className="app-header-right">
-          <button className="icon-btn" type="button" aria-label="Notifications">
+          <button
+            className="icon-btn"
+            type="button"
+            aria-label={newCount > 0 ? `${newCount} new job matches` : "Notifications"}
+            style={{ position: "relative" }}
+          >
             <BellIcon width={18} height={18} />
+            {newCount > 0 && <span className="notif-badge">{newCount > 9 ? "9+" : newCount}</span>}
           </button>
           <button className="icon-btn" type="button" aria-label="Messages">
             <MailIcon width={18} height={18} />
