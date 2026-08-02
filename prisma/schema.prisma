@@ -41,6 +41,11 @@ model SearchCriteria {
   greenhouseBoards String[] @default([])
   leverBoards      String[] @default([])
 
+  /// Arbitrary RSS feed URLs to pull postings from for this search
+  /// (e.g. a saved-search feed from a regional job board). Generic —
+  /// works with any feed the user has legitimate access to.
+  rssFeeds         String[] @default([])
+
   createdAt        DateTime @default(now())
 }
 

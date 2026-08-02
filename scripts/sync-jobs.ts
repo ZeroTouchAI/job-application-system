@@ -17,6 +17,8 @@ import { db } from "../lib/db";
 import { fetchArbeitnowJobs } from "../lib/sources/arbeitnow";
 import { fetchGreenhouseJobs } from "../lib/sources/greenhouse";
 import { fetchLeverJobs } from "../lib/sources/lever";
+import { fetchUsaJobs } from "../lib/sources/usajobs";
+import { fetchRssJobs } from "../lib/sources/rss";
 import { extractListedApplyEmail } from "../lib/sources/extractListedEmail";
 import { scoreMatch } from "../lib/engine/matchEngine";
 import type { RawPosting } from "../lib/sources/arbeitnow";
@@ -60,6 +62,31 @@ async function collectAllPostings(): Promise<RawPosting[]> {
       results.push(...jobs);
     } catch (err) {
       console.error("Arbeitnow fetch failed:", err);
+    }
+  }
+
+  // USAJobs: same one-call-per-saved-search pattern as Arbeitnow. No-ops
+  // (returns []) if USAJOBS_API_KEY/USAJOBS_USER_AGENT aren't set.
+  for (const search of searches) {
+    try {
+      const jobs = await fetchUsaJobs(search);
+      results.push(...jobs);
+    } catch (err) {
+      console.error("USAJobs fetch failed:", err);
+    }
+  }
+
+  // RSS: any feed URLs a user has attached to one of their saved
+  // searches — e.g. a saved-search feed from a regional job board.
+  const rssFeeds = new Set<string>();
+  for (const c of allCriteria) {
+    c.rssFeeds.forEach((feedUrl: string) => rssFeeds.add(feedUrl));
+  }
+  for (const feedUrl of rssFeeds) {
+    try {
+      results.push(...(await fetchRssJobs(feedUrl)));
+    } catch (err) {
+      console.error(`RSS fetch failed for "${feedUrl}":`, err);
     }
   }
 

@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
         keywords: Array.isArray(body.keywords) ? body.keywords : [],
         greenhouseBoards: Array.isArray(body.greenhouseBoards) ? body.greenhouseBoards : [],
         leverBoards: Array.isArray(body.leverBoards) ? body.leverBoards : [],
+        rssFeeds: Array.isArray(body.rssFeeds) ? body.rssFeeds : [],
       },
     });
 

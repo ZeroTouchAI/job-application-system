@@ -12,6 +12,7 @@ interface SearchCriteria {
   keywords: string[];
   greenhouseBoards: string[];
   leverBoards: string[];
+  rssFeeds: string[];
 }
 
 export default function JobSearchSettingsPage() {
@@ -27,6 +28,7 @@ export default function JobSearchSettingsPage() {
   const [keywords, setKeywords] = useState("");
   const [greenhouseBoards, setGreenhouseBoards] = useState("");
   const [leverBoards, setLeverBoards] = useState("");
+  const [rssFeeds, setRssFeeds] = useState("");
   const [saving, setSaving] = useState(false);
 
   function loadCriteria() {
@@ -73,6 +75,7 @@ export default function JobSearchSettingsPage() {
           keywords: splitList(keywords),
           greenhouseBoards: splitList(greenhouseBoards),
           leverBoards: splitList(leverBoards),
+          rssFeeds: splitList(rssFeeds),
         }),
       });
 
@@ -90,6 +93,7 @@ export default function JobSearchSettingsPage() {
       setKeywords("");
       setGreenhouseBoards("");
       setLeverBoards("");
+      setRssFeeds("");
       loadCriteria();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -227,6 +231,21 @@ export default function JobSearchSettingsPage() {
                 <div className="field-hint">Comma-separated. Optional.</div>
               </div>
 
+              <div className="field">
+                <label htmlFor="rss">RSS feed URLs</label>
+                <input
+                  id="rss"
+                  type="text"
+                  value={rssFeeds}
+                  onChange={(e) => setRssFeeds(e.target.value)}
+                  placeholder="e.g. a saved-search feed from a regional job board"
+                />
+                <div className="field-hint">
+                  Comma-separated. Any feed you have legitimate access to — useful for
+                  region-specific boards not covered by the built-in sources.
+                </div>
+              </div>
+
               <button className="btn btn-primary" onClick={handleAdd} disabled={saving}>
                 {saving ? "Adding..." : "Add search"}
               </button>
@@ -278,6 +297,11 @@ export default function JobSearchSettingsPage() {
                       {kw}
                     </span>
                   ))}
+                </div>
+              )}
+              {c.rssFeeds.length > 0 && (
+                <div style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 6 }}>
+                  {c.rssFeeds.length} RSS feed{c.rssFeeds.length === 1 ? "" : "s"} attached
                 </div>
               )}
             </div>
