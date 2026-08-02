@@ -89,6 +89,14 @@ export const UploadIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const DownloadIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg {...base(props)}>
+    <path d="M12 3v12" />
+    <path d="m7 10 5 5 5-5" />
+    <path d="M5 21h14" />
+  </svg>
+);
+
 export const SearchIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg {...base(props)}>
     <circle cx="11" cy="11" r="7" />

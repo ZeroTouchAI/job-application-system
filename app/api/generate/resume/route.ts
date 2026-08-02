@@ -6,8 +6,6 @@ import { generateResume } from "../../../../lib/engine/generateResume";
 import { auditResume } from "../../../../lib/engine/truthAudit";
 import { buildResumeDocx } from "../../../../lib/docx/docxBuilder";
 import type { Profile, JobPostingAnalysis } from "../../../../lib/profileSchema";
-import fs from "node:fs/promises";
-import path from "node:path";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -72,23 +70,24 @@ export async function POST(req: NextRequest) {
 
   const docxBuffer = await buildResumeDocx(profile, resume);
 
-  // NOTE: local filesystem storage is a placeholder for the MVP. Swap
-  // for object storage (S3-compatible bucket, etc.) before deploying
-  // multi-user in production — local disk won't persist or scale across
-  // serverless instances.
-  const outputDir = path.join(process.cwd(), "generated");
-  await fs.mkdir(outputDir, { recursive: true });
-  const filePath = path.join(outputDir, `resume-${applicationId}.docx`);
-  await fs.writeFile(filePath, docxBuffer);
+  // Returned directly to the browser as base64 rather than written to
+  // local disk — Vercel's filesystem is read-only/ephemeral outside
+  // /tmp, so a disk write here silently fails to persist anything the
+  // user could ever retrieve.
+  const fileName = `Resume - ${application.jobPosting.company}.docx`;
 
   await db.application.update({
     where: { id: applicationId },
     data: {
-      resumeDocPath: filePath,
       truthAudit: auditResults,
       status: "drafted",
     },
   });
 
-  return NextResponse.json({ resume, truthAudit: auditResults });
+  return NextResponse.json({
+    resume,
+    truthAudit: auditResults,
+    docxBase64: docxBuffer.toString("base64"),
+    fileName,
+  });
 }

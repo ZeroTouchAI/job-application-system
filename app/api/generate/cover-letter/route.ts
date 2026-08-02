@@ -5,8 +5,6 @@ import { db } from "../../../../lib/db";
 import { generateCoverLetter } from "../../../../lib/engine/generateCoverLetter";
 import { buildCoverLetterDocx } from "../../../../lib/docx/docxBuilder";
 import type { Profile, JobPostingAnalysis } from "../../../../lib/profileSchema";
-import fs from "node:fs/promises";
-import path from "node:path";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -61,16 +59,11 @@ export async function POST(req: NextRequest) {
 
   const letter = await generateCoverLetter(profile, posting);
   const docxBuffer = await buildCoverLetterDocx(profile, letter);
+  const fileName = `Cover Letter - ${application.jobPosting.company}.docx`;
 
-  const outputDir = path.join(process.cwd(), "generated");
-  await fs.mkdir(outputDir, { recursive: true });
-  const filePath = path.join(outputDir, `cover-letter-${applicationId}.docx`);
-  await fs.writeFile(filePath, docxBuffer);
-
-  await db.application.update({
-    where: { id: applicationId },
-    data: { coverLetterDocPath: filePath },
+  return NextResponse.json({
+    letter,
+    docxBase64: docxBuffer.toString("base64"),
+    fileName,
   });
-
-  return NextResponse.json({ letter });
 }
