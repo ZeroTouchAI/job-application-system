@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { BellIcon, MailIcon, ChevronDownIcon } from "../icons";
+import { ChevronDownIcon } from "../icons";
 
 interface AppHeaderProps {
   active: "dashboard" | "resume" | "jobs";
@@ -77,18 +77,9 @@ export default function AppHeader({ active }: AppHeaderProps) {
         </nav>
 
         <div className="app-header-right">
-          <button
-            className="icon-btn"
-            type="button"
-            aria-label={newCount > 0 ? `${newCount} new job matches` : "Notifications"}
-            style={{ position: "relative" }}
-          >
-            <BellIcon width={18} height={18} />
-            {newCount > 0 && <span className="notif-badge">{newCount > 9 ? "9+" : newCount}</span>}
-          </button>
-          <button className="icon-btn" type="button" aria-label="Messages">
-            <MailIcon width={18} height={18} />
-          </button>
+          <div className={`new-jobs-pill${newCount > 0 ? " has-new" : ""}`}>
+            {newCount} new job{newCount === 1 ? "" : "s"} found
+          </div>
 
           <div className="user-menu" ref={menuRef}>
             <button
