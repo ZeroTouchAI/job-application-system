@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import AppHeader from "../components/AppHeader";
-import { FileTextIcon, MapPinIcon, BriefcaseIcon, LogOutIcon } from "../icons";
+import { FileTextIcon, MapPinIcon, BriefcaseIcon, LogOutIcon, DownloadIcon } from "../icons";
 
 interface Application {
   id: string;
@@ -53,12 +53,41 @@ interface ProfileData {
   technicalSkills?: { name: string; items: string[] }[];
 }
 
+interface ReadyMaterials {
+  jobTitle: string;
+  company: string;
+  applyUrl: string | null;
+  resumeBase64: string;
+  resumeFileName: string;
+  coverLetterBase64: string;
+  coverLetterFileName: string;
+}
+
+function downloadBase64Docx(base64: string, fileName: string) {
+  const byteChars = atob(base64);
+  const bytes = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+  const blob = new Blob([bytes], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function DashboardPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [searchCriteriaList, setSearchCriteriaList] = useState<SearchCriteria[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [readyMaterials, setReadyMaterials] = useState<ReadyMaterials | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [locationText, setLocationText] = useState("");
@@ -84,22 +113,46 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
-  async function handleGenerate(applicationId: string) {
-    setGeneratingId(applicationId);
+  async function handleGenerate(app: Application) {
+    setGeneratingId(app.id);
+    setGenerateError(null);
     try {
-      await fetch("/api/generate/resume", {
+      const resumeRes = await fetch("/api/generate/resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId }),
+        body: JSON.stringify({ applicationId: app.id }),
       });
-      await fetch("/api/generate/cover-letter", {
+      const resumeData = await resumeRes.json();
+      if (!resumeRes.ok) {
+        setGenerateError(resumeData.error || "Couldn't generate the resume. Try again.");
+        return;
+      }
+
+      const coverRes = await fetch("/api/generate/cover-letter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId }),
+        body: JSON.stringify({ applicationId: app.id }),
       });
+      const coverData = await coverRes.json();
+      if (!coverRes.ok) {
+        setGenerateError(coverData.error || "Couldn't generate the cover letter. Try again.");
+        return;
+      }
+
       setApplications((prev) =>
-        prev.map((a) => (a.id === applicationId ? { ...a, status: "drafted" } : a))
+        prev.map((a) => (a.id === app.id ? { ...a, status: "drafted" } : a))
       );
+      setReadyMaterials({
+        jobTitle: app.jobPosting.title,
+        company: app.jobPosting.company,
+        applyUrl: app.jobPosting.applyUrl,
+        resumeBase64: resumeData.docxBase64,
+        resumeFileName: resumeData.fileName,
+        coverLetterBase64: coverData.docxBase64,
+        coverLetterFileName: coverData.fileName,
+      });
+    } catch {
+      setGenerateError("Something went wrong generating your materials. Try again.");
     } finally {
       setGeneratingId(null);
     }
@@ -290,6 +343,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {generateError && <div className="form-error">{generateError}</div>}
+
           {loading && <div className="empty-state">Loading your matches...</div>}
 
           {!loading && applications.length === 0 && (
@@ -352,7 +407,7 @@ export default function DashboardPage() {
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={generatingId === app.id}
-                    onClick={() => handleGenerate(app.id)}
+                    onClick={() => handleGenerate(app)}
                   >
                     <FileTextIcon width={15} height={15} />
                     {generatingId === app.id
@@ -481,6 +536,72 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {readyMaterials && (
+        <div className="modal-overlay" onClick={() => setReadyMaterials(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Your materials are ready</h2>
+              <button
+                className="modal-close-btn"
+                onClick={() => setReadyMaterials(null)}
+                aria-label="Close"
+              >
+                &times;
+              </button>
+            </div>
+
+            <p style={{ fontSize: 13.5, color: "var(--color-text-muted)", marginBottom: 18 }}>
+              Download both files, then apply for <strong>{readyMaterials.jobTitle}</strong> at{" "}
+              <strong>{readyMaterials.company}</strong> using the button below — upload the
+              resume and cover letter there.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+              <button
+                className="btn btn-outline btn-sm"
+                style={{ justifyContent: "flex-start" }}
+                onClick={() =>
+                  downloadBase64Docx(readyMaterials.resumeBase64, readyMaterials.resumeFileName)
+                }
+              >
+                <DownloadIcon width={15} height={15} />
+                Download resume ({readyMaterials.resumeFileName})
+              </button>
+              <button
+                className="btn btn-outline btn-sm"
+                style={{ justifyContent: "flex-start" }}
+                onClick={() =>
+                  downloadBase64Docx(
+                    readyMaterials.coverLetterBase64,
+                    readyMaterials.coverLetterFileName
+                  )
+                }
+              >
+                <DownloadIcon width={15} height={15} />
+                Download cover letter ({readyMaterials.coverLetterFileName})
+              </button>
+            </div>
+
+            {readyMaterials.applyUrl ? (
+              <a
+                href={readyMaterials.applyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-primary btn-sm"
+                style={{ width: "100%" }}
+                onClick={() => setReadyMaterials(null)}
+              >
+                Go to application page &rarr;
+              </a>
+            ) : (
+              <div style={{ fontSize: 12.5, color: "var(--color-text-muted)" }}>
+                No application link on file for this posting — apply directly with the employer.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
