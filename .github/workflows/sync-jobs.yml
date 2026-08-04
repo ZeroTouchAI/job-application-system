@@ -2,7 +2,10 @@ name: Sync job postings
 
 on:
   schedule:
-    # Every 3 days at 08:00 UTC. Adjust to taste — this is the free
+    # Runs on days-of-month divisible by 3 (3rd, 6th, 9th...) at 08:00 UTC.
+    # Note: this is NOT a true rolling "every 3 days" interval — near a
+    # month boundary the actual gap between runs can be as short as 1 day
+    # or as long as 4 (e.g. 30th -> 3rd). Adjust to taste — this is the free
     # replacement for a paid automation platform's scheduler.
     - cron: "0 8 */3 * *"
   workflow_dispatch: {} # allows manual trigger from the Actions tab
