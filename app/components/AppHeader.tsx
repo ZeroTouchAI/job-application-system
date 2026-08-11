@@ -101,7 +101,7 @@ export default function AppHeader({ active }: AppHeaderProps) {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    signOut({ callbackUrl: "/" });
+                    signOut({ callbackUrl: "/login" });
                   }}
                 >
                   Log out

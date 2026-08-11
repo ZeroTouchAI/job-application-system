@@ -5,7 +5,7 @@ import { fetchLeverJobs } from "./sources/lever";
 import { fetchUsaJobs } from "./sources/usajobs";
 import { fetchRssJobs } from "./sources/rss";
 import { extractListedApplyEmail } from "./sources/extractListedEmail";
-import { scoreMatch } from "./engine/matchEngine";
+import { scoreMatch, locationMatches } from "./engine/matchEngine";
 import type { MatchResult } from "./engine/matchEngine";
 import type { RawPosting } from "./sources/arbeitnow";
 import type { JobPostingAnalysis, Profile } from "./profileSchema";
@@ -139,6 +139,42 @@ async function runInBatches<T>(items: T[], size: number, fn: (item: T) => Promis
 }
 
 /**
+ * Decides whether a posting is allowed through for a given user, based
+ * on their saved searches' location fields.
+ *
+ * Rules (per product decision): if the user has at least one saved
+ * search with NO location set, treat that as "anywhere is fine" and
+ * don't filter by location at all. Otherwise, a posting must either be
+ * remote, or location-match at least one of the user's saved searches,
+ * to be shown — this is a hard gate, not a scoring factor, so a great
+ * skill match in the wrong city is excluded outright.
+ */
+function userAllowsPostingLocation(
+  posting: { location: string | null; remote: boolean },
+  criteria: { location: string | null }[]
+): boolean {
+  if (criteria.length === 0) return true; // no saved searches yet — nothing to filter by
+
+  const locationCriteria = criteria.filter((c) => c.location && c.location.trim());
+  if (locationCriteria.length === 0) return true; // every saved search is location-agnostic
+
+  if (posting.remote) return true; // remote roles are accessible regardless of the posted location
+
+  return locationCriteria.some((c) => locationMatches(posting.location, c.location as string));
+}
+
+/**
+ * Key used to recognize "the same real-world job" across different
+ * internal posting IDs. Sources sometimes reissue the same listing
+ * under a new sourceId (a refreshed/bumped posting), which would
+ * otherwise look like a brand-new posting to the database and slip
+ * past a user's earlier reject.
+ */
+function jobIdentityKey(title: string, company: string): string {
+  return `${title.trim().toLowerCase()}|${company.trim().toLowerCase()}`;
+}
+
+/**
  * Runs a full job sync: fetches postings from all configured sources,
  * upserts them into the database, then re-scores them against every
  * user's profile.
@@ -157,7 +193,12 @@ export async function runJobSync(): Promise<JobSyncResult> {
   const rawPostings = await collectAllPostings();
 
   let postingsUpserted = 0;
-  const storedPostings: { id: string; analysis: JobPostingAnalysis }[] = [];
+  const storedPostings: {
+    id: string;
+    location: string | null;
+    remote: boolean;
+    analysis: JobPostingAnalysis;
+  }[] = [];
 
   for (const raw of rawPostings) {
     const applyEmail = extractListedApplyEmail(raw.rawText);
@@ -187,11 +228,16 @@ export async function runJobSync(): Promise<JobSyncResult> {
     });
 
     postingsUpserted++;
-    storedPostings.push({ id: posting.id, analysis: rawPostingToAnalysis(raw) });
+    storedPostings.push({
+      id: posting.id,
+      location: raw.location,
+      remote: raw.remote,
+      analysis: rawPostingToAnalysis(raw),
+    });
   }
 
   const usersWithProfiles = await db.user.findMany({
-    include: { profile: true },
+    include: { profile: true, searchCriteria: true },
   });
 
   let suggestionsCreated = 0;
@@ -211,14 +257,31 @@ export async function runJobSync(): Promise<JobSyncResult> {
       knownGaps: user.profile.knownGaps,
     };
 
+    // Postings this user has already rejected, identified by
+    // title+company rather than internal posting ID — see
+    // jobIdentityKey() above for why. A reject should stick even if the
+    // source reissues the same listing under a new sourceId later.
+    const rejectedApps = await db.application.findMany({
+      where: { userId: user.id, status: "rejected" },
+      select: { jobPosting: { select: { title: true, company: true } } },
+    });
+    const rejectedKeys = new Set(
+      rejectedApps.map((a) => jobIdentityKey(a.jobPosting.title, a.jobPosting.company))
+    );
+
     // Score everything up front and keep only postings above a minimal
-    // relevance bar to avoid flooding the dashboard.
-    // NOTE: lowered from 40 while the match scoring is still based on
-    // crude keyword overlap rather than a richer comparison - a strict
-    // threshold here can hide genuinely relevant postings. Revisit
+    // relevance bar to avoid flooding the dashboard, that pass this
+    // user's own saved-search location filter (see
+    // userAllowsPostingLocation above), and that the user hasn't already
+    // rejected under a different posting ID for the same real job.
+    // NOTE: 15-point bar lowered from 40 while the match scoring is still
+    // based on crude keyword overlap rather than a richer comparison - a
+    // strict threshold here can hide genuinely relevant postings. Revisit
     // once matchEngine.ts scoring is improved (e.g. LLM-assisted).
     const qualifying: { id: string; match: MatchResult }[] = [];
-    for (const { id, analysis } of storedPostings) {
+    for (const { id, location, remote, analysis } of storedPostings) {
+      if (!userAllowsPostingLocation({ location, remote }, user.searchCriteria)) continue;
+      if (rejectedKeys.has(jobIdentityKey(analysis.title, analysis.company))) continue;
       const match = scoreMatch(analysis, profile);
       if (match.matchScore < 15) continue;
       qualifying.push({ id, match });
