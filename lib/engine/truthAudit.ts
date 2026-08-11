@@ -2,6 +2,11 @@ import type { Profile } from "../profileSchema";
 import type { GeneratedResume } from "./generateResume";
 import type { TruthAuditEntry } from "../profileSchema";
 
+// Segment names that would let a path-traversal step reach off the
+// intended data structure and onto Object.prototype instead. Rejected
+// outright rather than traversed.
+const DANGEROUS_SEGMENTS = new Set(["__proto__", "prototype", "constructor"]);
+
 /**
  * Resolves a sourceRef path like "workExperience[1].bullets[2]" against
  * the profile object and returns the referenced value, or null if the
@@ -17,6 +22,7 @@ function resolveSourceRef(profile: Profile, ref: string): unknown {
   let current: unknown = profile;
   for (const seg of segments) {
     if (current == null) return null;
+    if (DANGEROUS_SEGMENTS.has(seg)) return null;
     const key = /^\d+$/.test(seg) ? Number(seg) : seg;
     // @ts-expect-error - dynamic path traversal
     current = current[key];
