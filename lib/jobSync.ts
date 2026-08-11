@@ -6,6 +6,7 @@ import { fetchUsaJobs } from "./sources/usajobs";
 import { fetchRssJobs } from "./sources/rss";
 import { extractListedApplyEmail } from "./sources/extractListedEmail";
 import { scoreMatch } from "./engine/matchEngine";
+import type { MatchResult } from "./engine/matchEngine";
 import type { RawPosting } from "./sources/arbeitnow";
 import type { JobPostingAnalysis, Profile } from "./profileSchema";
 
@@ -14,6 +15,11 @@ export interface JobSyncResult {
   postingsUpserted: number;
   suggestionsCreated: number;
 }
+
+// Cap on concurrent application upserts per user, so a sync with a
+// very large number of qualifying postings doesn't try to open
+// hundreds of simultaneous DB connections at once.
+const UPSERT_CONCURRENCY = 25;
 
 async function collectAllPostings(): Promise<RawPosting[]> {
   const allCriteria = await db.searchCriteria.findMany();
@@ -124,6 +130,14 @@ function rawPostingToAnalysis(raw: RawPosting): JobPostingAnalysis {
   };
 }
 
+/** Runs an array of async tasks with at most `size` running concurrently. */
+async function runInBatches<T>(items: T[], size: number, fn: (item: T) => Promise<void>) {
+  for (let i = 0; i < items.length; i += size) {
+    const chunk = items.slice(i, i + size);
+    await Promise.all(chunk.map(fn));
+  }
+}
+
 /**
  * Runs a full job sync: fetches postings from all configured sources,
  * upserts them into the database, then re-scores them against every
@@ -185,8 +199,6 @@ export async function runJobSync(): Promise<JobSyncResult> {
   for (const user of usersWithProfiles) {
     if (!user.profile) continue;
 
-    let newForUser = 0;
-
     const profile: Profile = {
       fullName: user.profile.fullName ?? undefined,
       email: user.profile.email ?? undefined,
@@ -199,24 +211,40 @@ export async function runJobSync(): Promise<JobSyncResult> {
       knownGaps: user.profile.knownGaps,
     };
 
+    // Score everything up front and keep only postings above a minimal
+    // relevance bar to avoid flooding the dashboard.
+    // NOTE: lowered from 40 while the match scoring is still based on
+    // crude keyword overlap rather than a richer comparison - a strict
+    // threshold here can hide genuinely relevant postings. Revisit
+    // once matchEngine.ts scoring is improved (e.g. LLM-assisted).
+    const qualifying: { id: string; match: MatchResult }[] = [];
     for (const { id, analysis } of storedPostings) {
       const match = scoreMatch(analysis, profile);
-
-      // Only surface postings above a minimal relevance bar to avoid
-      // flooding the dashboard.
-      // NOTE: lowered from 40 while the match scoring is still based on
-      // crude keyword overlap rather than a richer comparison - a strict
-      // threshold here can hide genuinely relevant postings. Revisit
-      // once matchEngine.ts scoring is improved (e.g. LLM-assisted).
       if (match.matchScore < 15) continue;
+      qualifying.push({ id, match });
+    }
 
-      // Checked separately (rather than inferred from the upsert result)
-      // so we can tell the user exactly how many NEW matches this run
-      // produced, not how many were touched.
-      const existingApp = await db.application.findUnique({
-        where: { userId_jobPostingId: { userId: user.id, jobPostingId: id } },
+    if (qualifying.length === 0) {
+      await db.user.update({
+        where: { id: user.id },
+        data: { lastSyncNewCount: 0, lastSyncAt: new Date() },
       });
+      continue;
+    }
 
+    // One query for all of this user's existing applications among the
+    // qualifying postings, instead of one findUnique() per posting, so
+    // we can still report how many are genuinely NEW this run.
+    const existingApps = await db.application.findMany({
+      where: {
+        userId: user.id,
+        jobPostingId: { in: qualifying.map((q) => q.id) },
+      },
+      select: { jobPostingId: true },
+    });
+    const existingIds = new Set(existingApps.map((a) => a.jobPostingId));
+
+    await runInBatches(qualifying, UPSERT_CONCURRENCY, async ({ id, match }) => {
       await db.application.upsert({
         where: { userId_jobPostingId: { userId: user.id, jobPostingId: id } },
         update: {
@@ -233,9 +261,10 @@ export async function runJobSync(): Promise<JobSyncResult> {
           status: "suggested",
         },
       });
-      if (!existingApp) newForUser++;
-      suggestionsCreated++;
-    }
+    });
+
+    const newForUser = qualifying.filter((q) => !existingIds.has(q.id)).length;
+    suggestionsCreated += qualifying.length;
 
     await db.user.update({
       where: { id: user.id },
