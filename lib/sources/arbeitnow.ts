@@ -68,23 +68,26 @@ export async function fetchArbeitnowJobs(params: {
   let results = json.data;
 
   // Arbeitnow's board is heavily weighted toward Europe/remote-Europe.
-  // A strict location substring match (e.g. "Toronto, ON") will
-  // legitimately match zero listings there — that's not a bug, it's
-  // just outside this source's coverage. Rather than silently return
-  // nothing, fall back to the full unfiltered set so at least remote
-  // and other postings still surface; downstream match-scoring against
-  // the user's profile handles relevance from there.
+  // A strict location substring match (e.g. "Toronto, ON") can
+  // legitimately match zero listings there — that's just outside this
+  // source's coverage, not a bug. Previously this fell back to the
+  // full unfiltered set so *something* would surface; that's exactly
+  // what let mismatched-location postings (e.g. UK jobs for a Toronto
+  // search) reach users. When a location is requested and nothing
+  // matches, this source now correctly contributes nothing instead —
+  // other sources (Greenhouse/Lever boards, RSS feeds, USAJobs) still
+  // get their own chance to surface local results, and
+  // lib/jobSync.ts's location gate is the final authority regardless.
   if (params.location) {
     const locationFiltered = results.filter((job) =>
       job.location?.toLowerCase().includes(params.location!.toLowerCase())
     );
-    if (locationFiltered.length > 0) {
-      results = locationFiltered;
-    } else {
+    if (locationFiltered.length === 0) {
       console.warn(
-        `Arbeitnow: no listings matched location "${params.location}" (this source is Europe-focused) — falling back to unfiltered results.`
+        `Arbeitnow: no listings matched location "${params.location}" (this source is Europe-focused) — returning no results for this search rather than falling back to unfiltered.`
       );
     }
+    results = locationFiltered;
   }
 
   // Since Arbeitnow doesn't filter by keyword server-side, do a light
