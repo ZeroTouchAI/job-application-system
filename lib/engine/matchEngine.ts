@@ -4,7 +4,7 @@ export interface MatchResult {
   matchScore: number; // 0-100
   keywordsMatched: string[];
   keywordsMissing: string[];
-  band: "overqualified" | "excellent" | "good" | "stretch" | "underqualified";
+  band: "excellent" | "strong" | "good" | "stretch" | "underqualified";
   recommendation: string;
 }
 
@@ -52,11 +52,15 @@ export function scoreMatch(
   const profileTerms = collectProfileTerms(profile);
   const knownGapTerms = new Set(profile.knownGaps.map(normalize));
 
+  // Filtered to length > 2, same as profile terms above — short tokens
+  // (e.g. "c", "go") otherwise produce false-positive substring matches below.
   const requiredTerms = [
     ...posting.requiredSkills,
     ...posting.certificationsRequired,
     ...posting.softwareRequired,
-  ].map(normalize);
+  ]
+    .map(normalize)
+    .filter((t) => t.length > 2);
 
   const matched: string[] = [];
   const missing: string[] = [];
@@ -87,16 +91,26 @@ export function scoreMatch(
   };
 }
 
+/**
+ * Band thresholds reflect keyword-overlap strength, not seniority or
+ * experience surplus — there's no "score too high" case here, so the top
+ * band is just "excellent", not "overqualified". A genuine overqualification
+ * signal would need a different input (e.g. years of experience vs. posting
+ * seniority level), which this function doesn't have access to yet.
+ */
 function bandFor(score: number): {
   band: MatchResult["band"];
   recommendation: string;
 } {
   if (score >= 90)
-    return { band: "overqualified", recommendation: "Overqualified" };
-  if (score >= 75)
     return {
       band: "excellent",
       recommendation: "Excellent fit — apply immediately",
+    };
+  if (score >= 75)
+    return {
+      band: "strong",
+      recommendation: "Strong fit — apply with a tailored resume",
     };
   if (score >= 60)
     return {
