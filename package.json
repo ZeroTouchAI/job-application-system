@@ -7,7 +7,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma db push --skip-generate && next build",
     "start": "next start",
     "lint": "next lint",
     "sync-jobs": "tsx scripts/sync-jobs.ts",
