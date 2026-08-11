@@ -2,6 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
+import { checkRateLimit } from "./rateLimit";
 
 /**
  * Self-contained email/password auth — no third-party auth vendor
@@ -22,8 +23,16 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        const email = credentials.email.trim().toLowerCase();
+
+        // Rate limit per email so an attacker can't brute-force a
+        // single account's password by hammering this endpoint,
+        // regardless of how many IPs they spread the attempts across.
+        const { allowed } = checkRateLimit(`login:${email}`, 5, 15 * 60 * 1000);
+        if (!allowed) return null;
+
         const user = await db.user.findUnique({
-          where: { email: credentials.email.trim().toLowerCase() },
+          where: { email },
         });
         if (!user) return null;
 
