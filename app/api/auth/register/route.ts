@@ -1,8 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "../../../../lib/db";
+import { checkRateLimit, getClientIp } from "../../../../lib/rateLimit";
 
 export async function POST(req: NextRequest) {
+  // Rate limit by IP to slow down scripted registration spam/abuse.
+  const ip = getClientIp(req.headers);
+  const { allowed, retryAfterSeconds } = checkRateLimit(
+    `register:${ip}`,
+    5,
+    15 * 60 * 1000
+  );
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many registration attempts. Please try again in a few minutes." },
+      {
+        status: 429,
+        headers: retryAfterSeconds
+          ? { "Retry-After": String(retryAfterSeconds) }
+          : undefined,
+      }
+    );
+  }
+
   try {
     const body = (await req.json()) as { email?: string; password?: string };
     const email = body.email?.trim().toLowerCase();
