@@ -1,0 +1,251 @@
+import { db } from "./db";
+import { fetchArbeitnowJobs } from "./sources/arbeitnow";
+import { fetchGreenhouseJobs } from "./sources/greenhouse";
+import { fetchLeverJobs } from "./sources/lever";
+import { fetchUsaJobs } from "./sources/usajobs";
+import { fetchRssJobs } from "./sources/rss";
+import { extractListedApplyEmail } from "./sources/extractListedEmail";
+import { scoreMatch } from "./engine/matchEngine";
+import type { RawPosting } from "./sources/arbeitnow";
+import type { JobPostingAnalysis, Profile } from "./profileSchema";
+
+export interface JobSyncResult {
+  postingsFetched: number;
+  postingsUpserted: number;
+  suggestionsCreated: number;
+}
+
+async function collectAllPostings(): Promise<RawPosting[]> {
+  const allCriteria = await db.searchCriteria.findMany();
+
+  const defaultGreenhouse = (process.env.GREENHOUSE_DEFAULT_BOARDS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const defaultLever = (process.env.LEVER_DEFAULT_BOARDS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const greenhouseBoards = new Set(defaultGreenhouse);
+  const leverBoards = new Set(defaultLever);
+
+  for (const c of allCriteria) {
+    c.greenhouseBoards.forEach((b: string) => greenhouseBoards.add(b));
+    c.leverBoards.forEach((b: string) => leverBoards.add(b));
+  }
+
+  const results: RawPosting[] = [];
+
+  // Arbeitnow: one call per distinct saved search (niche + location),
+  // so each tracked role gets its own targeted results rather than
+  // everything being blended into one generic query.
+  const searches = allCriteria.length
+    ? allCriteria.map((c: { niche: string; location: string | null }) => ({
+        keyword: c.niche,
+        location: c.location || undefined,
+      }))
+    : [{ keyword: undefined, location: undefined }];
+
+  for (const search of searches) {
+    try {
+      const jobs = await fetchArbeitnowJobs(search);
+      results.push(...jobs);
+    } catch (err) {
+      console.error("Arbeitnow fetch failed:", err);
+    }
+  }
+
+  // USAJobs: same one-call-per-saved-search pattern as Arbeitnow. No-ops
+  // (returns []) if USAJOBS_API_KEY/USAJOBS_USER_AGENT aren't set.
+  for (const search of searches) {
+    try {
+      const jobs = await fetchUsaJobs(search);
+      results.push(...jobs);
+    } catch (err) {
+      console.error("USAJobs fetch failed:", err);
+    }
+  }
+
+  // RSS: any feed URLs a user has attached to one of their saved
+  // searches — e.g. a saved-search feed from a regional job board.
+  const rssFeeds = new Set<string>();
+  for (const c of allCriteria) {
+    c.rssFeeds.forEach((feedUrl: string) => rssFeeds.add(feedUrl));
+  }
+  for (const feedUrl of rssFeeds) {
+    try {
+      results.push(...(await fetchRssJobs(feedUrl)));
+    } catch (err) {
+      console.error(`RSS fetch failed for "${feedUrl}":`, err);
+    }
+  }
+
+  for (const board of greenhouseBoards) {
+    try {
+      results.push(...(await fetchGreenhouseJobs(board)));
+    } catch (err) {
+      console.error(`Greenhouse fetch failed for "${board}":`, err);
+    }
+  }
+
+  for (const company of leverBoards) {
+    try {
+      results.push(...(await fetchLeverJobs(company)));
+    } catch (err) {
+      console.error(`Lever fetch failed for "${company}":`, err);
+    }
+  }
+
+  return results;
+}
+
+function rawPostingToAnalysis(raw: RawPosting): JobPostingAnalysis {
+  // Lightweight keyword extraction. In production this step benefits
+  // from an LLM pass (see lib/engine — a future jobPostingParser can
+  // reuse the same Anthropic client as generateResume.ts). Kept
+  // dependency-free here so a sync run stays fast and cheap.
+  const words = raw.rawText
+    .toLowerCase()
+    .split(/[^a-z0-9+.#]+/)
+    .filter((w) => w.length > 3);
+
+  const uniqueWords = [...new Set(words)].slice(0, 40);
+
+  return {
+    title: raw.title,
+    company: raw.company,
+    requiredSkills: uniqueWords,
+    preferredSkills: [],
+    certificationsRequired: [],
+    softwareRequired: [],
+    atsKeywords: uniqueWords,
+    rawText: raw.rawText,
+  };
+}
+
+/**
+ * Runs a full job sync: fetches postings from all configured sources,
+ * upserts them into the database, then re-scores them against every
+ * user's profile.
+ *
+ * Shared between the CLI entry point (scripts/sync-jobs.ts, used by the
+ * scheduled cron job — see .github/workflows/sync-jobs.yml) and the
+ * manual "sync now" API route (app/api/jobs/sync/route.ts), so both
+ * paths run identical logic instead of drifting apart.
+ *
+ * Callers own the Prisma connection lifecycle — this function does not
+ * call db.$disconnect(). The API route reuses a long-lived client across
+ * requests, so disconnecting here would break it; only the standalone
+ * CLI script should disconnect after calling this.
+ */
+export async function runJobSync(): Promise<JobSyncResult> {
+  const rawPostings = await collectAllPostings();
+
+  let postingsUpserted = 0;
+  const storedPostings: { id: string; analysis: JobPostingAnalysis }[] = [];
+
+  for (const raw of rawPostings) {
+    const applyEmail = extractListedApplyEmail(raw.rawText);
+
+    const posting = await db.jobPosting.upsert({
+      where: { source_sourceId: { source: raw.source, sourceId: raw.sourceId } },
+      update: {
+        title: raw.title,
+        company: raw.company,
+        location: raw.location,
+        remote: raw.remote,
+        rawText: raw.rawText,
+        applyUrl: raw.applyUrl,
+        applyEmail,
+      },
+      create: {
+        source: raw.source,
+        sourceId: raw.sourceId,
+        title: raw.title,
+        company: raw.company,
+        location: raw.location,
+        remote: raw.remote,
+        rawText: raw.rawText,
+        applyUrl: raw.applyUrl,
+        applyEmail,
+      },
+    });
+
+    postingsUpserted++;
+    storedPostings.push({ id: posting.id, analysis: rawPostingToAnalysis(raw) });
+  }
+
+  const usersWithProfiles = await db.user.findMany({
+    include: { profile: true },
+  });
+
+  let suggestionsCreated = 0;
+
+  for (const user of usersWithProfiles) {
+    if (!user.profile) continue;
+
+    let newForUser = 0;
+
+    const profile: Profile = {
+      fullName: user.profile.fullName ?? undefined,
+      email: user.profile.email ?? undefined,
+      phone: user.profile.phone ?? undefined,
+      location: user.profile.location ?? undefined,
+      linkedinUrl: user.profile.linkedinUrl ?? undefined,
+      workExperience: user.profile.workExperience as Profile["workExperience"],
+      certifications: user.profile.certifications as Profile["certifications"],
+      technicalSkills: user.profile.technicalSkills as Profile["technicalSkills"],
+      knownGaps: user.profile.knownGaps,
+    };
+
+    for (const { id, analysis } of storedPostings) {
+      const match = scoreMatch(analysis, profile);
+
+      // Only surface postings above a minimal relevance bar to avoid
+      // flooding the dashboard.
+      // NOTE: lowered from 40 while the match scoring is still based on
+      // crude keyword overlap rather than a richer comparison - a strict
+      // threshold here can hide genuinely relevant postings. Revisit
+      // once matchEngine.ts scoring is improved (e.g. LLM-assisted).
+      if (match.matchScore < 15) continue;
+
+      // Checked separately (rather than inferred from the upsert result)
+      // so we can tell the user exactly how many NEW matches this run
+      // produced, not how many were touched.
+      const existingApp = await db.application.findUnique({
+        where: { userId_jobPostingId: { userId: user.id, jobPostingId: id } },
+      });
+
+      await db.application.upsert({
+        where: { userId_jobPostingId: { userId: user.id, jobPostingId: id } },
+        update: {
+          matchScore: match.matchScore,
+          keywordsMatched: match.keywordsMatched,
+          keywordsMissing: match.keywordsMissing,
+        },
+        create: {
+          userId: user.id,
+          jobPostingId: id,
+          matchScore: match.matchScore,
+          keywordsMatched: match.keywordsMatched,
+          keywordsMissing: match.keywordsMissing,
+          status: "suggested",
+        },
+      });
+      if (!existingApp) newForUser++;
+      suggestionsCreated++;
+    }
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { lastSyncNewCount: newForUser, lastSyncAt: new Date() },
+    });
+  }
+
+  return {
+    postingsFetched: rawPostings.length,
+    postingsUpserted,
+    suggestionsCreated,
+  };
+}
