@@ -298,10 +298,10 @@ export default function DashboardPage() {
                     <div className="info">
                       <span className="dot" />
                       <div className="status-row-text">
-                        <div className="title">{app.jobPosting.title}</div>
+                      <div className="title">{app.jobPosting.title}</div>
                         <div className="company">{app.jobPosting.company}</div>
                       </div>
-                    </div>
+                  </div>
                     <span className={`status-pill ${app.status}`}>{STATUS_LABELS[app.status]}</span>
                   </div>
                 ))}
@@ -311,7 +311,7 @@ export default function DashboardPage() {
 
           <button
             className="sidebar-logout-btn"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            onClick={() => signOut({ callbackUrl: "/login" })}
           >
             <LogOutIcon width={16} height={16} />
             Log out
@@ -337,9 +337,6 @@ export default function DashboardPage() {
                 onChange={(e) => setLocationText(e.target.value)}
                 style={{ borderLeft: "1px solid var(--color-border)", borderRadius: 0 }}
               />
-              <button className="btn btn-primary btn-sm" type="button">
-                Search
-              </button>
             </div>
           </div>
 
@@ -350,7 +347,7 @@ export default function DashboardPage() {
           {!loading && applications.length === 0 && (
             <div className="empty-state">
               <div style={{ fontWeight: 600, marginBottom: 4 }}>No matches yet</div>
-              Fill out your resume and set your job search criteria in{" "}
+              Fill out your resume and set your job search criteria in {" "}
               <a href="/jobs" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
                 Add/Edit Jobs
               </a>
@@ -401,7 +398,6 @@ export default function DashboardPage() {
                   {app.jobPosting.source}
                 </span>
               </div>
-
               <div className="job-card-actions">
                 {(app.status === "suggested" || app.status === "drafted") && (
                   <button
@@ -468,7 +464,6 @@ export default function DashboardPage() {
                   </a>
                 )}
               </div>
-
               {app.status === "drafted" && app.jobPosting.applyEmail && (
                 <div style={{ marginTop: 10, fontSize: 12.5, color: "var(--color-text-muted)" }}>
                   Employer-listed apply email: <strong>{app.jobPosting.applyEmail}</strong>.
