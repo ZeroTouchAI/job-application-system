@@ -40,6 +40,27 @@ function tokenize(s: string): string[] {
 }
 
 /**
+ * Returns true if a posting's location text shares a meaningful token
+ * (e.g. a city name) with a requested location string - e.g.
+ * "Toronto, Ontario" vs "Toronto, ON, Canada" both tokenize to include
+ * "toronto", so they match even though the strings differ.
+ *
+ * Used as a hard gate on which postings a user sees (see
+ * lib/jobSync.ts's userAllowsPostingLocation), kept separate from
+ * matchScore below so a strong skill match in the wrong city is
+ * excluded outright rather than just scored a bit lower.
+ */
+export function locationMatches(
+  postingLocation: string | null,
+  wantedLocation: string
+): boolean {
+  if (!postingLocation) return false;
+  const postingTokens = new Set(tokenize(postingLocation));
+  const wantedTokens = tokenize(wantedLocation);
+  return wantedTokens.some((t) => postingTokens.has(t));
+}
+
+/**
  * Score = (keywords matched / total required keywords) × 100
  * Same formula as the original spec, applied programmatically here
  * (a lightweight first pass) and refined per-application by the LLM
