@@ -1,37 +1,23 @@
-{
-  "name": "joby",
-  "version": "0.1.0",
-  "private": true,
-  "description": "A free, open-source job-search co-pilot: grounded resume tailoring, ToS-compliant job sourcing, and application tracking.",
-  "license": "MIT",
-  "scripts": {
-    "postinstall": "prisma generate",
-    "dev": "next dev",
-    "build": "prisma db push --skip-generate && next build",
-    "start": "next start",
-    "lint": "next lint",
-    "sync-jobs": "tsx scripts/sync-jobs.ts",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
-  },
-  "dependencies": {
-    "@prisma/client": "^5.20.0",
-    "next": "14.2.35",
-    "next-auth": "^4.24.8",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "docx": "^9.0.2",
-    "zod": "^3.23.8",
-    "bcryptjs": "^2.4.3",
-    "rss-parser": "^3.13.0",
-    "fast-xml-parser": "^4.5.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.7.5",
-    "@types/react": "^18.3.11",
-    "@types/bcryptjs": "^2.4.6",
-    "typescript": "^5.6.3",
-    "prisma": "^5.20.0",
-    "tsx": "^4.19.1"
-  }
-}
+ewogICJuYW1lIjogImpvYnkiLAogICJ2ZXJzaW9uIjogIjAuMS4xIiwKICAi
+cHJpdmF0ZSI6IHRydWUsCiAgImRlc2NyaXB0aW9uIjogIkEgZnJlZSwgb3Bl
+bi1zb3VyY2Ugam9iLXNlYXJjaCBjby1waWxvdDogZ3JvdW5kZWQgcmVzdW1l
+IHRhaWxvcmluZywgVG9TLWNvbXBsaWFudCBqb2Igc291cmNpbmcsIGFuZCBh
+cHBsaWNhdGlvbiB0cmFja2luZy4iLAogICJsaWNlbnNlIjogIk1JVCIsCiAg
+InNjcmlwdHMiOiB7CiAgICAicG9zdGluc3RhbGwiOiAicHJpc21hIGdlbmVy
+YXRlIiwKICAgICJkZXYiOiAibmV4dCBkZXYiLAogICAgImJ1aWxkIjogInBy
+aXNtYSBkYiBwdXNoIC0tc2tpcC1nZW5lcmF0ZSAmJiBuZXh0IGJ1aWxkIiwK
+ICAgICJzdGFydCI6ICJuZXh0IHN0YXJ0IiwKICAgICJsaW50IjogIm5leHQg
+bGludCIsCiAgICAic3luYy1qb2JzIjogInRzeCBzY3JpcHRzL3N5bmMtam9i
+cy50cyIsCiAgICAicHJpc21hOm1pZ3JhdGUiOiAicHJpc21hIG1pZ3JhdGUg
+ZGV2IiwKICAgICJwcmlzbWE6c3R1ZGlvIjogInByaXNtYSBzdHVkaW8iCiAg
+fSwKICAiZGVwZW5kZW5jaWVzIjogewogICAgIkBwcmlzbWEvY2xpZW50Ijog
+Il41LjIwLjAiLAogICAgIm5leHQiOiAiMTQuMi4zNSIsCiAgICAibmV4dC1h
+dXRoIjogIl40LjI0LjgiLAogICAgInJlYWN0IjogIl4xOC4zLjEiLAogICAg
+InJlYWN0LWRvbSI6ICJeMTguMy4xIiwKICAgICJkb2N4IjogIl45LjAuMiIs
+CiAgICAiem9kIjogIl4zLjIzLjgiLAogICAgImJjcnlwdGpzIjogIl4yLjQu
+MyIsCiAgICAicnNzLXBhcnNlciI6ICJeMy4xMy4wIiwKICAgICJmYXN0LXht
+bC1wYXJzZXIiOiAiXjQuNS4wIgogIH0sCiAgImRldkRlcGVuZGVuY2llcyI6
+IHsKICAgICJAdHlwZXMvbm9kZSI6ICJeMjIuNy41IiwKICAgICJAdHlwZXMv
+cmVhY3QiOiAiXjE4LjMuMTEiLAogICAgIkB0eXBlcy9iY3J5cHRqcyI6ICJe
+Mi40LjYiLAogICAgInR5cGVzY3JpcHQiOiAiXjUuNi4zIiwKICAgICJwcmlz
+bWEiOiAiXjUuMjAuMCIsCiAgICAidHN4IjogIl40LjE5LjEiCiAgfQp9Cg==
