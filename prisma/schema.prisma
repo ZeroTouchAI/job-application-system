@@ -120,10 +120,18 @@ model Application {
   /// Array of { claim, sourceRef, status } — see lib/engine/truthAudit.ts
   truthAudit Json @default("[]")
 
-  status    String   @default("suggested") // suggested | drafted | applied | interview | offer | rejected
+  status    String   @default("suggested") // suggested | queued | drafted | applied | interview | offer | rejected
   appliedAt DateTime?
+
+  /// Swipe-deck decision: "right" (interested), "left" (pass), "up" (top pick).
+  /// Null = not swiped yet. A left swipe also sets status "rejected", which
+  /// the sync already treats as sticky across re-issued postings.
+  swipe     String?
+  swipedAt  DateTime?
+  topPick   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, jobPostingId])
+  @@index([userId, swipedAt])
 }

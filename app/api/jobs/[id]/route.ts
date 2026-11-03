@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
 import { db } from "../../../../lib/db";
 
-const VALID_STATUSES = ["suggested", "drafted", "applied", "interview", "offer", "rejected"];
+const VALID_STATUSES = ["suggested", "queued", "drafted", "applied", "interview", "offer", "rejected"];
 
 /**
  * Updates an application's status (e.g. after the user actually submits
