@@ -34,6 +34,7 @@ interface SearchCriteria {
 // Reject can happen from any stage and hides the card from view.
 const STATUS_LABELS: Record<string, string> = {
   suggested: "Suggested",
+  queued: "Queued",
   drafted: "Ready to apply",
   applied: "Applied",
   interview: "Interview",

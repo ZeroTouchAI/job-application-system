@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { ChevronDownIcon } from "../icons";
 
 interface AppHeaderProps {
-  active: "dashboard" | "resume" | "jobs";
+  active: "dashboard" | "resume" | "jobs" | "deck" | "queue";
 }
 
 export default function AppHeader({ active }: AppHeaderProps) {
@@ -67,6 +67,12 @@ export default function AppHeader({ active }: AppHeaderProps) {
         <nav className="app-nav-links">
           <Link href="/dashboard" className={active === "dashboard" ? "active-nav" : ""}>
             Dashboard
+          </Link>
+          <Link href="/deck" className={active === "deck" ? "active-nav" : ""}>
+            Swipe
+          </Link>
+          <Link href="/queue" className={active === "queue" ? "active-nav" : ""}>
+            Queue
           </Link>
           <Link href="/profile" className={active === "resume" ? "active-nav" : ""}>
             Add/Edit Resume
