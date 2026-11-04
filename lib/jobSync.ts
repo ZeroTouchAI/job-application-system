@@ -4,6 +4,8 @@ import { fetchGreenhouseJobs } from "./sources/greenhouse";
 import { fetchLeverJobs } from "./sources/lever";
 import { fetchUsaJobs } from "./sources/usajobs";
 import { fetchRssJobs } from "./sources/rss";
+import { fetchAdzunaJobs } from "./sources/adzuna";
+import { fetchApifyJobs } from "./sources/apify";
 import { extractListedApplyEmail } from "./sources/extractListedEmail";
 import { scoreMatch, locationMatches } from "./engine/matchEngine";
 import type { MatchResult } from "./engine/matchEngine";
@@ -71,6 +73,25 @@ async function collectAllPostings(): Promise<RawPosting[]> {
     } catch (err) {
       console.error("USAJobs fetch failed:", err);
     }
+  }
+
+  // Adzuna (Canada): same one-call-per-saved-search pattern. No-ops
+  // unless ADZUNA_APP_ID / ADZUNA_APP_KEY are set.
+  for (const search of searches) {
+    try {
+      const jobs = await fetchAdzunaJobs(search);
+      results.push(...jobs);
+    } catch (err) {
+      console.error("Adzuna fetch failed:", err);
+    }
+  }
+
+  // Apify: one budget-capped actor run per sync (not per user). No-ops
+  // unless APIFY_TOKEN and APIFY_ACTOR_ID are set. See lib/sources/budget.ts.
+  try {
+    results.push(...(await fetchApifyJobs()));
+  } catch (err) {
+    console.error("Apify fetch failed:", err);
   }
 
   // RSS: any feed URLs a user has attached to one of their saved
