@@ -6,6 +6,9 @@ import { fetchUsaJobs } from "./sources/usajobs";
 import { fetchRssJobs } from "./sources/rss";
 import { fetchAdzunaJobs } from "./sources/adzuna";
 import { fetchApifyJobs } from "./sources/apify";
+import { fetchAshbyJobs } from "./sources/ashby";
+import { SEED_BOARDS } from "./sources/seedBoards";
+import { canadaOnly, isCanadian } from "./sources/canada";
 import { extractListedApplyEmail } from "./sources/extractListedEmail";
 import { scoreMatch, locationMatches } from "./engine/matchEngine";
 import type { MatchResult } from "./engine/matchEngine";
@@ -34,9 +37,24 @@ async function collectAllPostings(): Promise<RawPosting[]> {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+  const defaultAshby = (process.env.ASHBY_DEFAULT_BOARDS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   const greenhouseBoards = new Set(defaultGreenhouse);
   const leverBoards = new Set(defaultLever);
+  const ashbyBoards = new Set(defaultAshby);
+
+  // Starter Canadian employers so a new account has cards immediately.
+  if (process.env.SEED_CANADIAN_BOARDS !== "off") {
+    SEED_BOARDS.greenhouse.forEach((b) => greenhouseBoards.add(b));
+    SEED_BOARDS.lever.forEach((b) => leverBoards.add(b));
+    SEED_BOARDS.ashby.forEach((b) => ashbyBoards.add(b));
+  }
+
+  // Canada only for now (US sources paused). Set CANADA_ONLY=false to lift.
+  const onlyCanada = canadaOnly();
 
   for (const c of allCriteria) {
     c.greenhouseBoards.forEach((b: string) => greenhouseBoards.add(b));
@@ -55,7 +73,7 @@ async function collectAllPostings(): Promise<RawPosting[]> {
       }))
     : [{ keyword: undefined, location: undefined }];
 
-  for (const search of searches) {
+  for (const search of onlyCanada ? [] : searches) {
     try {
       const jobs = await fetchArbeitnowJobs(search);
       results.push(...jobs);
@@ -66,7 +84,7 @@ async function collectAllPostings(): Promise<RawPosting[]> {
 
   // USAJobs: same one-call-per-saved-search pattern as Arbeitnow. No-ops
   // (returns []) if USAJOBS_API_KEY/USAJOBS_USER_AGENT aren't set.
-  for (const search of searches) {
+  for (const search of onlyCanada ? [] : searches) {
     try {
       const jobs = await fetchUsaJobs(search);
       results.push(...jobs);
@@ -124,7 +142,15 @@ async function collectAllPostings(): Promise<RawPosting[]> {
     }
   }
 
-  return results;
+  for (const board of ashbyBoards) {
+    try {
+      results.push(...(await fetchAshbyJobs(board)));
+    } catch (err) {
+      console.error(`Ashby fetch failed for "${board}":`, err);
+    }
+  }
+
+  return onlyCanada ? results.filter((r) => isCanadian(r.location, r.remote)) : results;
 }
 
 function rawPostingToAnalysis(raw: RawPosting): JobPostingAnalysis {

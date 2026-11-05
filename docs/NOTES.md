@@ -18,13 +18,15 @@ The system reads each application's questions and stores answers in a reusable *
 - 2026-11-04: Focus Canada first (J tests with own profile). US later.
 - 2026-11-04: Expand sources via official APIs / public ATS endpoints rather than "random scraping", to stay consistent with the repo's ToS-compliant stance. See `canada-sources.md`.
 - 2026-11-04: Scraper spend capped at $4.50/month (J's limit is $5). Math and guard in `budget.md`; `lib/sources/budget.ts` caps every Apify run.
-- 2026-11-04: Built (branch `feat/canada-sources`): Apify adapter, Adzuna connector, budget guard. All off until env vars are set. Indeed/LinkedIn/Glassdoor actors NOT built (conflicts with `spec.md`); J's decision if that should change.
+- 2026-11-04: Built (PR #9, merged): Apify adapter, Adzuna connector, budget guard. All off until env vars are set.
+- 2026-11-05: J chose to add Indeed + LinkedIn via Apify. Tested actors; chose `agentx/all-jobs-scraper` (predictable $0.01/run + $0.0035/result). Rejected khadinakbar (hidden proxy/compute cost, about $11 per 1,000), devilscrapes (crashes), openclawai ($6 per 1,000). See `budget.md`, `scraping-policy.md`.
+- 2026-11-05: Canada only (`CANADA_ONLY`, default on). Arbeitnow and USAJobs skipped. Native Ashby adapter added (free), so Apify is only used for Indeed/LinkedIn. Seeded 23 verified Canadian Greenhouse/Lever/Ashby boards.
 - 2026-11-04: Add a criteria profile store for application questions. See `criteria-profile.md`.
 
 ## Next steps
-1. DONE (branch): Adzuna connector, Apify adapter, budget guard.
-2. Trial one ATS Apify actor with a tiny cap; record real price in `budget.md`.
-3. Seed a list of Canadian companies for Greenhouse/Lever/Ashby connectors; add Ashby.
+1. DONE: Adzuna connector, Apify adapter, budget guard (PR #9).
+2. DONE: actor trial (budget.md), Ashby adapter, seed boards.
+3. Set APIFY_TOKEN secret + $4.50 Apify limit; run one sync; check logs.
 3b. Add Remotive/Himalayas connectors filtered to Canada-eligible roles (read terms first).
 4. Add `Job.applyMethod` field (`ATS_LINK`, `EMAIL`, `EXTERNAL`) and `Job.questions` JSON.
 5. Build swipe-yes flow: tailor resume -> extract questions -> fill from criteria profile -> ask only for unknowns.
