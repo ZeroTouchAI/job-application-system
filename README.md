@@ -22,7 +22,10 @@ Two ideas, both load-bearing:
 To keep this project free, legal, and safe to self-host, it deliberately does
 **not**:
 
-- Scrape LinkedIn or any site that forbids scraping in its terms of service.
+- Scrape LinkedIn *profiles*, or any site that forbids scraping, by default.
+  The optional Indeed/LinkedIn **job-posting** source (Apify, off unless
+  `APIFY_TOKEN` is set) is the owner's deliberate exception; see
+  [`docs/scraping-policy.md`](./docs/scraping-policy.md) before enabling it.
 - Discover or guess personal/hiring-manager email addresses via third-party
   "contact enrichment" APIs (Apollo, RocketReach, etc.).
 - Auto-apply to jobs without the user reviewing and clicking submit.
@@ -68,7 +71,11 @@ product spec.
   `https://boards-api.greenhouse.io/v1/boards/{company}/jobs`)
 - Lever public postings API (per-company, e.g.
   `https://api.lever.co/v0/postings/{company}`)
+- Ashby public posting API (per-company, e.g.
+  `https://api.ashbyhq.com/posting-api/job-board/{company}`)
 - RSS feeds from any board that publishes one
+- Optional, off by default: Indeed/LinkedIn job postings via Apify
+  (see [`docs/scraping-policy.md`](./docs/scraping-policy.md))
 - (Roadmap) USAJobs public API for US government roles
 
 ## Getting started
