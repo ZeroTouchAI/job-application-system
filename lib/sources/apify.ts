@@ -1,155 +1,199 @@
 import type { RawPosting } from "./arbeitnow";
-import { getRunBudget } from "./budget";
+import { db } from "../db";
+import { planBoardsRun } from "./budget";
+import { isCanadian } from "./canada";
 
 /**
- * Apify source: runs ONE configured actor per sync and maps its dataset to
- * RawPosting. Meant for actors that read companies' own public ATS career
- * pages (see docs/notes-apify-and-followups.md). Do not point this at actors
- * that scrape LinkedIn, Indeed or Glassdoor; docs/spec.md rules that out.
+ * Apify job-board source (Indeed + LinkedIn by default) via
+ * agentx/all-jobs-scraper, chosen after a capped test on 2026-11-05:
+ * clean Canadian output, official apply URLs on Indeed rows, and the only
+ * candidate whose cost is fully predictable ($0.01 per run + $0.0035 per
+ * result, platform usage paid by the actor author).
  *
- * Everything is env-driven because no actor has been tested yet and their
- * input schemas differ:
- *   APIFY_TOKEN          required, otherwise this source is a no-op
- *   APIFY_ACTOR_ID       required, e.g. "owner~actor-name" (use ~ not /)
- *   APIFY_ACTOR_INPUT    optional JSON string passed as the actor input
- *   APIFY_COUNTRY        optional, "CA" keeps only Canadian-looking locations
+ * NOTE: these boards' terms prohibit scraping. This is a deliberate choice by
+ * the owner, off unless APIFY_TOKEN is set. See docs/scraping-policy.md.
  *
- * Budget: see ./budget.ts. Every run is capped with maxTotalChargeUsd and
- * maxItems. Both are Apify run options; confirm against the current Apify API
- * docs when first wiring a token.
+ * Env:
+ *   APIFY_TOKEN              required, otherwise this source is a no-op
+ *   APIFY_BOARDS_ACTOR       default "agentx~all-jobs-scraper"
+ *   APIFY_BOARD_PLATFORMS    default "Indeed,LinkedIn" (comma separated)
+ *   APIFY_COUNTRY            default "Canada"
+ * Budget env: see ./budget.ts
+ *
+ * One run per saved search (keyword + location). Searches without a keyword
+ * are skipped.
  */
 
-const CANADA_RE =
-  /canada|\b(ON|BC|AB|QC|MB|SK|NS|NB|NL|PE|NT|YT|NU)\b|ontario|british columbia|alberta|quebec|québec|manitoba|saskatchewan|nova scotia|new brunswick|toronto|vancouver|montreal|montréal|calgary|edmonton|ottawa|winnipeg|halifax|waterloo|mississauga|victoria/i;
+const API = "https://api.apify.com/v2";
+const POLL_MS = 10_000;
+const MAX_WAIT_MS = 12 * 60_000;
+const TERMINAL = new Set(["SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"]);
 
 type Item = Record<string, unknown>;
 
-function pick(item: Item, keys: string[]): string | null {
-  for (const k of keys) {
-    const v = item[k];
-    if (typeof v === "string" && v.trim()) return v.trim();
-    if (typeof v === "number") return String(v);
-  }
-  return null;
+function str(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
-function locationOf(item: Item): string | null {
-  const direct = pick(item, ["location", "locationName", "jobLocation", "city"]);
-  if (direct) return direct;
+async function runActor(
+  token: string,
+  actorId: string,
+  input: unknown,
+  maxItems: number,
+  maxChargeUsd: number
+): Promise<Item[]> {
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  const startUrl = new URL(`${API}/acts/${encodeURIComponent(actorId)}/runs`);
+  startUrl.searchParams.set("maxItems", String(maxItems));
+  startUrl.searchParams.set("maxTotalChargeUsd", maxChargeUsd.toFixed(3));
+
+  const startRes = await fetch(startUrl.toString(), {
+    method: "POST",
+    headers,
+    body: JSON.stringify(input),
+  });
+  if (!startRes.ok) {
+    throw new Error(`Apify start failed: ${startRes.status} ${startRes.statusText}`);
+  }
+  const started = (await startRes.json()) as {
+    data: { id: string; defaultDatasetId: string };
+  };
+  const runId = started.data.id;
+  const datasetId = started.data.defaultDatasetId;
+
+  const deadline = Date.now() + MAX_WAIT_MS;
+  let status = "RUNNING";
+  let usageUsd: number | null = null;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_MS));
+    const res = await fetch(`${API}/actor-runs/${runId}`, { headers });
+    if (!res.ok) continue;
+    const run = (await res.json()) as {
+      data: { status: string; usageTotalUsd?: number };
+    };
+    status = run.data.status;
+    usageUsd = run.data.usageTotalUsd ?? null;
+    if (TERMINAL.has(status)) break;
+  }
+
+  console.log(
+    `Apify run ${runId}: ${status}, cost ${usageUsd === null ? "unknown" : `$${usageUsd.toFixed(4)}`}`
+  );
+
+  // A run stopped by the spend cap ends ABORTED but still keeps what it
+  // already produced, so read the dataset whatever the final status was.
+  const itemsRes = await fetch(
+    `${API}/datasets/${datasetId}/items?clean=true&limit=${maxItems}`,
+    { headers }
+  );
+  if (!itemsRes.ok) {
+    throw new Error(`Apify dataset read failed: ${itemsRes.status}`);
+  }
+  const items = (await itemsRes.json()) as Item[];
+  return Array.isArray(items) ? items : [];
+}
+
+function toPosting(item: Item): RawPosting | null {
+  const title = str(item["title"]);
+  const platform = (str(item["platform"]) || "board").toLowerCase();
+  const platformUrl = str(item["platform_url"]);
+  const applyUrl = str(item["official_url"]) || platformUrl;
+  if (!title || !applyUrl) return null;
+
   const loc = item["location"];
+  let location: string | null = null;
   if (loc && typeof loc === "object") {
     const o = loc as Item;
-    const parts = [o["city"], o["region"], o["state"], o["country"]].filter(
-      (p): p is string => typeof p === "string" && !!p
-    );
-    if (parts.length) return parts.join(", ");
+    location =
+      str(o["raw"]) ||
+      [o["locality"], o["region"], o["country"]]
+        .filter((p): p is string => typeof p === "string" && !!p)
+        .join(", ") ||
+      null;
+  } else {
+    location = str(loc);
   }
-  return null;
-}
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const description = str(item["description"]);
+
+  return {
+    source: "apify",
+    sourceId: `${platform}:${platformUrl || applyUrl}`,
+    title,
+    company: str(item["company_name"]) || "Unknown",
+    location,
+    remote: item["is_remote"] === true,
+    rawText: description || title,
+    applyUrl,
+    applyEmail: null,
+  };
 }
 
 export async function fetchApifyJobs(): Promise<RawPosting[]> {
   const token = process.env.APIFY_TOKEN;
-  const actorId = process.env.APIFY_ACTOR_ID;
-  if (!token || !actorId) return []; // same no-op pattern as USAJobs
+  if (!token) return []; // same no-op pattern as USAJobs
 
-  const budget = getRunBudget();
-  if (budget.maxItems <= 0) {
-    console.warn("Apify: per-run budget allows 0 items; skipping.");
+  const actorId = process.env.APIFY_BOARDS_ACTOR || "agentx~all-jobs-scraper";
+  const platforms = (process.env.APIFY_BOARD_PLATFORMS || "Indeed,LinkedIn")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const country = process.env.APIFY_COUNTRY || "Canada";
+
+  // Distinct saved searches that have a keyword.
+  const criteria = await db.searchCriteria.findMany();
+  const seen = new Set<string>();
+  const searches: { keyword: string; location: string }[] = [];
+  for (const c of criteria as { niche: string; location: string | null }[]) {
+    const keyword = c.niche?.trim();
+    if (!keyword) continue;
+    const location = c.location?.trim() || country;
+    const key = `${keyword.toLowerCase()}|${location.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    searches.push({ keyword, location });
+  }
+  if (searches.length === 0) return [];
+
+  const plan = planBoardsRun(searches.length, platforms.length);
+  if (plan.searches === 0 || plan.maxItemsPerSearch < platforms.length) {
+    console.warn("Apify: per-run budget too small for any search; skipping.");
     return [];
   }
+  if (plan.searches < searches.length) {
+    console.warn(
+      `Apify: budget covers ${plan.searches} of ${searches.length} saved searches this run.`
+    );
+  }
 
-  let input: unknown = {};
-  if (process.env.APIFY_ACTOR_INPUT) {
+  const out: RawPosting[] = [];
+  for (const search of searches.slice(0, plan.searches)) {
     try {
-      input = JSON.parse(process.env.APIFY_ACTOR_INPUT);
-    } catch {
-      throw new Error("APIFY_ACTOR_INPUT is not valid JSON");
+      const items = await runActor(
+        token,
+        actorId,
+        {
+          country,
+          keyword: search.keyword,
+          location: search.location,
+          platforms,
+          // max_results is per platform for this actor.
+          max_results: Math.max(1, Math.floor(plan.maxItemsPerSearch / platforms.length)),
+        },
+        plan.maxItemsPerSearch,
+        plan.perSearchUsd
+      );
+      for (const item of items) {
+        const posting = toPosting(item);
+        if (posting && isCanadian(posting.location, posting.remote)) out.push(posting);
+      }
+    } catch (err) {
+      console.error(`Apify search "${search.keyword}" failed:`, err);
     }
   }
-
-  const url = new URL(
-    `https://api.apify.com/v2/acts/${encodeURIComponent(actorId)}/run-sync-get-dataset-items`
-  );
-  url.searchParams.set("maxItems", String(budget.maxItems));
-  url.searchParams.set("maxTotalChargeUsd", budget.perRunUsd.toFixed(2));
-
-  const res = await fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(input),
-    signal: AbortSignal.timeout(240_000),
-  });
-  if (!res.ok) {
-    throw new Error(`Apify run failed: ${res.status} ${res.statusText}`);
-  }
-
-  const items = (await res.json()) as Item[];
-  if (!Array.isArray(items)) return [];
-
-  const canadaOnly = (process.env.APIFY_COUNTRY || "").toUpperCase() === "CA";
-  const out: RawPosting[] = [];
-
-  for (const item of items) {
-    const title = pick(item, ["title", "jobTitle", "position", "name"]);
-    const company = pick(item, [
-      "company",
-      "companyName",
-      "company_name",
-      "organization",
-      "employer",
-    ]);
-    const applyUrl = pick(item, [
-      "applyUrl",
-      "apply_url",
-      "applyLink",
-      "absolute_url",
-      "jobUrl",
-      "url",
-      "link",
-    ]);
-    if (!title || !company || !applyUrl) continue;
-
-    const location = locationOf(item);
-    const remote =
-      item["remote"] === true ||
-      item["isRemote"] === true ||
-      /remote/i.test(location || "");
-
-    if (canadaOnly && !(location && CANADA_RE.test(location))) continue;
-
-    const description = pick(item, [
-      "description",
-      "descriptionText",
-      "descriptionPlain",
-      "content",
-      "jobDescription",
-    ]);
-
-    const id = pick(item, ["id", "jobId", "job_id", "externalId"]) || applyUrl;
-
-    out.push({
-      source: "apify",
-      sourceId: id,
-      title,
-      company,
-      location,
-      remote,
-      rawText: description ? stripHtml(description) : title,
-      applyUrl,
-      applyEmail: null,
-    });
-  }
-
   return out;
 }
