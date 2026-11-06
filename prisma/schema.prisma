@@ -98,6 +98,15 @@ model JobPosting {
   atsKeywords      String[] @default([])
   fetchedAt   DateTime @default(now())
 
+  // Pay and display details. All optional: many postings list none of them.
+  salaryMin      Int?
+  salaryMax      Int?
+  salaryCurrency String?  // "CAD" | "USD"
+  salaryPeriod   String?  // year | month | week | day | hour
+  logoUrl        String?  // company logo when the source provides one
+  postedAt       DateTime? // when the employer/board published it
+  workMode       String?  // remote | hybrid | onsite
+
   applications Application[]
 
   @@unique([source, sourceId])

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { db } from "../../../lib/db";
 import { APPLY_MODE_LABEL, applyModeFor, attributionFor, sourceLabel } from "../../../lib/deck";
+import { cardExtras } from "../../../lib/salary";
 
 const VIEWS: Record<string, string[]> = {
   interested: ["queued", "drafted"], // swiped right/up, not applied yet
@@ -54,6 +55,8 @@ export async function GET(req: Request) {
       applyModeLabel: APPLY_MODE_LABEL[applyMode],
       applyUrl: a.jobPosting.applyUrl,
       applyEmail: a.jobPosting.applyEmail,
+      appliedAt: a.appliedAt ? a.appliedAt.toISOString() : null,
+      ...cardExtras(a.jobPosting),
     };
   });
 

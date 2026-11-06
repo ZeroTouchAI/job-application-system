@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { db } from "../../../lib/db";
 import { DAILY_DECK_SIZE, dropRepeats, remainingToday, toDeckCard } from "../../../lib/deck";
+import { cardExtras } from "../../../lib/salary";
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -58,7 +59,7 @@ export async function GET() {
   ).slice(0, remaining);
 
   return NextResponse.json({
-    cards: fresh.map((k) => toDeckCard(k.app)),
+    cards: fresh.map((k) => ({ ...toDeckCard(k.app), ...cardExtras(k.app.jobPosting) })),
     remaining,
     dailyLimit: DAILY_DECK_SIZE,
     swipedToday: swipedInWindow,

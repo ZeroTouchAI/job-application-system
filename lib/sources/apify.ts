@@ -2,6 +2,8 @@ import type { RawPosting } from "./arbeitnow";
 import { db } from "../db";
 import { planBoardsRun } from "./budget";
 import { isCanadian } from "./canada";
+import { normalizePeriod, normalizeWorkMode } from "../salary";
+import type { PostingExtras } from "../salary";
 
 /**
  * Apify job-board source (Indeed + LinkedIn by default) via
@@ -97,7 +99,11 @@ async function runActor(
   return Array.isArray(items) ? items : [];
 }
 
-function toPosting(item: Item): RawPosting | null {
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function toPosting(item: Item): (RawPosting & PostingExtras) | null {
   const title = str(item["title"]);
   const platform = (str(item["platform"]) || "board").toLowerCase();
   const platformUrl = str(item["platform_url"]);
@@ -126,14 +132,21 @@ function toPosting(item: Item): RawPosting | null {
     title,
     company: str(item["company_name"]) || "Unknown",
     location,
-    remote: item["is_remote"] === true,
+    remote: item["is_remote"] === true || normalizeWorkMode(str(item["work_mode"])) === "remote",
     rawText: description || title,
     applyUrl,
     applyEmail: null,
+    salaryMin: num(item["salary_minimum"]),
+    salaryMax: num(item["salary_maximum"]),
+    salaryCurrency: str(item["salary_currency"]),
+    salaryPeriod: normalizePeriod(str(item["salary_period"])),
+    logoUrl: str(item["company_logo"]),
+    postedAt: str(item["posted_date"]),
+    workMode: normalizeWorkMode(str(item["work_mode"])),
   };
 }
 
-export async function fetchApifyJobs(): Promise<RawPosting[]> {
+export async function fetchApifyJobs(): Promise<(RawPosting & PostingExtras)[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) return []; // same no-op pattern as USAJobs
 
@@ -170,7 +183,7 @@ export async function fetchApifyJobs(): Promise<RawPosting[]> {
     );
   }
 
-  const out: RawPosting[] = [];
+  const out: (RawPosting & PostingExtras)[] = [];
   for (const search of searches.slice(0, plan.searches)) {
     try {
       const items = await runActor(
