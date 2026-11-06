@@ -33,6 +33,8 @@ export async function GET() {
     interested: count("queued", "drafted"),
     passed: count("rejected"),
     applied: count("applied", "interview", "offer"),
+    interview: count("interview", "offer"),
+    offer: count("offer"),
     appliedJobs: appliedApps.map((a: (typeof appliedApps)[number]) => ({
       id: a.id,
       title: a.jobPosting.title,

@@ -38,7 +38,7 @@ export interface BoardsPlan {
 
 export function planBoardsRun(searchCount: number, platformCount: number): BoardsPlan {
   const monthlyBudgetUsd = num("APIFY_MONTHLY_BUDGET_USD", 4.5);
-  const runsPerMonth = Math.ceil(num("APIFY_RUNS_PER_MONTH", 11));
+  const runsPerMonth = Math.ceil(num("APIFY_RUNS_PER_MONTH", 31));
   const startUsd = num("APIFY_START_PRICE_USD", 0.01);
   const resultUsd = num("APIFY_RESULT_PRICE_USD", 0.0035);
 

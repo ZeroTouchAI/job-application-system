@@ -46,6 +46,8 @@ interface Stats {
   interested: number;
   passed: number;
   applied: number;
+  interview: number;
+  offer: number;
   appliedJobs: { id: string; title: string; company: string; status: string }[];
 }
 
@@ -84,6 +86,51 @@ export function refreshFrame() {
   window.dispatchEvent(new Event("joby-refresh"));
 }
 
+/** Numbers glide to their new value instead of jumping. */
+function CountUp({ value }: { value: number | undefined }) {
+  const [shown, setShown] = useState(value ?? 0);
+  const from = useRef(value ?? 0);
+  useEffect(() => {
+    if (value === undefined) return;
+    const start = from.current;
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / 600);
+      setShown(Math.round(start + (value - start) * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else from.current = value;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{value === undefined ? "\u2013" : shown}</>;
+}
+
+function PipelineStrip({ stats }: { stats: Stats | null }) {
+  const found = stats?.found ?? 0;
+  const steps = [
+    { label: "Found", n: stats?.found },
+    { label: "Interested", n: stats?.interested },
+    { label: "Applied", n: stats?.applied },
+    { label: "Interview", n: stats?.interview },
+    { label: "Offer", n: stats?.offer },
+  ];
+  return (
+    <div className="jb-pipe" aria-label="Your pipeline">
+      {steps.map((st) => (
+        <div className="jb-pipe-step" key={st.label}>
+          <b>
+            <CountUp value={st.n} />
+          </b>
+          <span>{st.label}</span>
+          <i style={{ "--w": `${found > 0 && st.n ? Math.max(6, Math.round((st.n / found) * 100)) : 0}%` } as React.CSSProperties} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function initialsOf(name?: string) {
   return name
     ? name
@@ -108,7 +155,28 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   const [newCount, setNewCount] = useState(0);
   const [current, setCurrent] = useState<Current | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Remember the look the user picked on this device.
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem("joby-theme");
+      const d = localStorage.getItem("joby-density");
+      if (t === "dark" || t === "light") setTheme(t);
+      if (d === "compact" || d === "comfortable") setDensity(d);
+    } catch {
+      /* storage blocked: keep defaults */
+    }
+  }, []);
+  function pick(key: string, value: string) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* ignore */
+    }
+  }
 
   const materials = useMaterials((id) => {
     window.dispatchEvent(new CustomEvent("joby-generated", { detail: { id } }));
@@ -160,6 +228,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   }, [loadStats]);
 
   const onDashboard = pathname === "/dashboard" || pathname === "/deck";
+  const showPipeline = onDashboard || pathname === "/interested";
   const skills = (profile?.technicalSkills || []).flatMap((c) => c.items);
   const isActive = (m: string[]) => m.some((x) => pathname === x || pathname.startsWith(x + "/"));
   const initials = initialsOf(profile?.fullName);
@@ -172,7 +241,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="jb">
+    <div className="jb" data-theme={theme} data-density={density}>
       {/* ---------- Left sidebar ---------- */}
       <aside className="jb-side">
         <Link href="/dashboard" className="jb-brand">
@@ -199,7 +268,9 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
                 <o.Icon width={15} height={15} />
               </span>
               <span className="jb-ov-label">{o.label}</span>
-              <span className="jb-ov-count">{o.value ?? "–"}</span>
+              <span className="jb-ov-count">
+                <CountUp value={o.value} />
+              </span>
             </Link>
           ))}
         </div>
@@ -284,6 +355,26 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
                   <Link href="/account" onClick={() => setMenuOpen(false)}>
                     Profile
                   </Link>
+                  <div className="jb-menu-sep" />
+                  <button
+                    onClick={() => {
+                      const next = theme === "dark" ? "light" : "dark";
+                      setTheme(next);
+                      pick("joby-theme", next);
+                    }}
+                  >
+                    {theme === "dark" ? "Light mode" : "Dark mode"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const next = density === "compact" ? "comfortable" : "compact";
+                      setDensity(next);
+                      pick("joby-density", next);
+                    }}
+                  >
+                    {density === "compact" ? "Comfortable density" : "Compact density"}
+                  </button>
+                  <div className="jb-menu-sep" />
                   <button onClick={() => signOut({ callbackUrl: "/login" })}>Log out</button>
                 </div>
               )}
@@ -300,6 +391,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
             </div>
+            {showPipeline && <PipelineStrip stats={stats} />}
             <InFrameContext.Provider value={true}>{children}</InFrameContext.Provider>
           </main>
 
