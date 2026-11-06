@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { refreshFrame } from "../components/AppFrame";
-import "../swipe.css";
+import { JobLogo, LocationLine } from "../components/jobui";
 
 interface Item {
   id: string;
@@ -14,6 +14,9 @@ interface Item {
   remote: boolean;
   sourceLabel: string;
   applyUrl: string | null;
+  salaryText: string | null;
+  logoUrl: string | null;
+  workMode: string | null;
 }
 
 export default function PassedPage() {
@@ -64,57 +67,54 @@ export default function PassedPage() {
 
   return (
     <div>
-      <div className="page-intro">
-        <h1>Passed</h1>
+      <div className="jb-page-head">
+        <h1>Passed Jobs</h1>
         <p>Jobs you passed on. Changed your mind? Move one back to Interested.</p>
       </div>
 
       {error && <div className="form-error">{error}</div>}
-      {loading && <div className="queue-muted">Loading…</div>}
+      {loading && <div className="jb-empty-row">Loading…</div>}
 
       {!loading && items.length === 0 && (
-        <div className="queue-empty">
-          <p>You haven&apos;t passed on anything yet.</p>
-          <Link href="/dashboard" className="btn btn-primary">
+        <div className="jb-empty-row">
+          You haven&apos;t passed on anything yet.{" "}
+          <Link href="/dashboard" className="jb-link">
             Start swiping
           </Link>
         </div>
       )}
 
-      {items.map((item) => (
-        <article className="queue-item" key={item.id}>
-          <div className="queue-item-main">
-            <div className="queue-item-title">{item.title}</div>
-            <div className="queue-item-sub">
-              {item.company}
-              {item.location ? ` · ${item.location}` : ""}
-              {item.remote ? " · Remote" : ""}
+      <div className="jb-rows">
+        {items.map((item) => (
+          <div className="jb-row jb-row-passed" key={item.id}>
+            <JobLogo company={item.company} logoUrl={item.logoUrl} />
+            <div className="jb-row-main">
+              <div className="jb-row-title">{item.title}</div>
+              <div className="jb-row-sub">{item.company}</div>
             </div>
-            <div className="queue-item-meta">
-              {item.matchScore}% match · {item.sourceLabel}
+            <div className="jb-row-loc">
+              <LocationLine location={item.location} mode={item.workMode ?? (item.remote ? "remote" : null)} />
             </div>
-          </div>
-          <div className="queue-item-actions">
-            {item.applyUrl && (
-              <a
-                className="btn btn-outline btn-sm"
-                href={item.applyUrl}
-                target="_blank"
-                rel="noreferrer"
+            <div className="jb-row-pay">
+              {item.salaryText || <span className="jb-muted">Pay not listed</span>}
+            </div>
+            <div className="jb-row-actions">
+              {item.applyUrl && (
+                <a className="jb-btn jb-btn-outline jb-btn-sm" href={item.applyUrl} target="_blank" rel="noreferrer">
+                  View
+                </a>
+              )}
+              <button
+                className="jb-btn jb-btn-primary jb-btn-sm"
+                disabled={busyId === item.id}
+                onClick={() => moveToInterested(item.id)}
               >
-                View posting
-              </a>
-            )}
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={busyId === item.id}
-              onClick={() => moveToInterested(item.id)}
-            >
-              Move to Interested
-            </button>
+                Move to Interested
+              </button>
+            </div>
           </div>
-        </article>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

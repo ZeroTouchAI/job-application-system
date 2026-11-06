@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshFrame } from "../components/AppFrame";
-import { MapPinIcon, BriefcaseIcon } from "../icons";
+import { JobLogo, LocationLine, MatchRing } from "../components/jobui";
+import { SearchI, PinI } from "../components/jbicons";
+import { formatSalary } from "../../lib/salary";
 
 interface Application {
   id: string;
@@ -14,6 +16,12 @@ interface Application {
     remote: boolean;
     source: string;
     applyUrl: string | null;
+    logoUrl: string | null;
+    workMode: string | null;
+    salaryMin: number | null;
+    salaryMax: number | null;
+    salaryCurrency: string | null;
+    salaryPeriod: string | null;
   };
 }
 
@@ -21,8 +29,17 @@ interface Page {
   applications: Application[];
   total: number;
   page: number;
+  pageSize: number;
   totalPages: number;
 }
+
+const PROVINCES: { label: string; loc: string }[] = [
+  { label: "Ontario", loc: "Ontario|, ON" },
+  { label: "British Columbia", loc: "British Columbia|, BC" },
+  { label: "Alberta", loc: "Alberta|, AB" },
+  { label: "Quebec", loc: "Quebec|Qu\u00e9bec|, QC" },
+  { label: "Remote", loc: "Remote" },
+];
 
 /** Page numbers to show: first, last, and a window around the current page. */
 function pageWindow(current: number, total: number): (number | "…")[] {
@@ -100,22 +117,31 @@ export default function ListPage() {
   }
 
   const apps = data?.applications || [];
+  const from = data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0;
+  const to = data ? from + apps.length - (apps.length ? 1 : 0) : 0;
 
   return (
     <div>
-      <div className="search-hero">
-        <h2>Find your dream job here!</h2>
-        <p>Jobs you haven&apos;t swiped on yet. Anything you pick or pass moves to its own page.</p>
-        <div className="search-bar">
+      <div className="jb-page-head">
+        <h1>Browse Jobs</h1>
+        <p>Search and explore jobs you haven&apos;t swiped on yet.</p>
+      </div>
+
+      <div className="jb-searchbar">
+        <label className="jb-input">
+          <SearchI width={16} height={16} />
           <input
             type="text"
-            placeholder="Search by title or company..."
+            placeholder="Job title or company..."
             value={searchText}
             onChange={(e) => {
               setSearchText(e.target.value);
               setPage(1);
             }}
           />
+        </label>
+        <label className="jb-input">
+          <PinI width={16} height={16} />
           <input
             type="text"
             placeholder="City or region..."
@@ -124,127 +150,108 @@ export default function ListPage() {
               setLocationText(e.target.value);
               setPage(1);
             }}
-            style={{ borderLeft: "1px solid var(--color-border)", borderRadius: 0 }}
           />
-        </div>
+        </label>
+        <button className="jb-btn jb-btn-primary" onClick={() => load(1, searchText, locationText)}>
+          Search
+        </button>
+      </div>
+
+      <div className="jb-prov" aria-label="Filter by province">
+        {PROVINCES.map((p) => (
+          <button
+            key={p.label}
+            className={locationText === p.loc ? "on" : ""}
+            onClick={() => {
+              setLocationText(locationText === p.loc ? "" : p.loc);
+              setPage(1);
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       {error && <div className="form-error">{error}</div>}
-      {loading && <div className="empty-state">Loading your matches...</div>}
+      {loading && <div className="jb-empty-row">Loading your matches...</div>}
 
       {!loading && data && data.total === 0 && !searchText && !locationText && (
-        <div className="empty-state">
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Nothing left to swipe</div>
-          You&apos;ve been through everything we have. New jobs arrive after the next sync, or add
-          more searches in{" "}
-          <a href="/jobs" style={{ color: "var(--color-primary)", fontWeight: 600 }}>
+        <div className="jb-empty-row">
+          <b>Nothing left to swipe.</b> New jobs arrive after the next sync, or add more searches in{" "}
+          <a href="/jobs" className="jb-link">
             Add/Edit Jobs
           </a>
           .
         </div>
       )}
-
       {!loading && data && data.total === 0 && (searchText || locationText) && (
-        <div className="empty-state">No matches fit that search.</div>
+        <div className="jb-empty-row">No matches fit that search.</div>
       )}
 
-      {apps.map((app) => (
-        <div className="job-card" key={app.id}>
-          <div className="job-card-top">
-            <div className="job-card-logo">{app.jobPosting.company[0]?.toUpperCase() || "?"}</div>
-            <div className="job-card-title-block">
-              <h3>{app.jobPosting.title}</h3>
-              <div className="company">{app.jobPosting.company}</div>
+      <div className="jb-rows">
+        {apps.map((app) => {
+          const p = app.jobPosting;
+          const pay = formatSalary(p);
+          return (
+            <div className="jb-row" key={app.id}>
+              <JobLogo company={p.company} logoUrl={p.logoUrl} />
+              <div className="jb-row-main">
+                <div className="jb-row-title">{p.title}</div>
+                <div className="jb-row-sub">{p.company}</div>
+              </div>
+              <div className="jb-row-loc">
+                <LocationLine location={p.location} mode={p.workMode ?? (p.remote ? "remote" : null)} />
+              </div>
+              <div className="jb-row-pay">{pay || <span className="jb-muted">Pay not listed</span>}</div>
+              <MatchRing score={app.matchScore} size={50} />
+              <div className="jb-row-actions">
+                <button
+                  className="jb-btn jb-btn-primary jb-btn-sm"
+                  disabled={busyId === app.id}
+                  onClick={() => swipe(app, "right")}
+                >
+                  Interested
+                </button>
+                <button
+                  className="jb-btn jb-btn-outline jb-btn-sm"
+                  disabled={busyId === app.id}
+                  onClick={() => swipe(app, "left")}
+                >
+                  Pass
+                </button>
+              </div>
             </div>
-            <span
-              style={{
-                background: "var(--color-primary-soft)",
-                color: "var(--color-primary)",
-                fontSize: 12.5,
-                fontWeight: 700,
-                padding: "4px 10px",
-                borderRadius: 999,
-              }}
-            >
-              {app.matchScore}% match
-            </span>
-          </div>
+          );
+        })}
+      </div>
 
-          <div className="job-card-tags">
-            <span className="job-tag">{app.jobPosting.remote ? "Remote" : "Onsite"}</span>
-            <span className="job-tag">{app.jobPosting.source}</span>
-          </div>
-
-          <div className="job-card-meta-row">
-            <span className="meta-item">
-              <MapPinIcon width={14} height={14} />
-              {app.jobPosting.location || "Location unspecified"}
-            </span>
-            <span className="meta-item">
-              <BriefcaseIcon width={14} height={14} />
-              {app.jobPosting.source}
-            </span>
-          </div>
-
-          <div className="job-card-actions">
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={busyId === app.id}
-              onClick={() => swipe(app, "right")}
-            >
-              Interested
-            </button>
-            <button
-              className="btn btn-outline btn-sm"
-              style={{ color: "#b42318", borderColor: "#f3b3ab" }}
-              disabled={busyId === app.id}
-              onClick={() => swipe(app, "left")}
-            >
-              Pass
-            </button>
-            {app.jobPosting.applyUrl && (
-              <a
-                href={app.jobPosting.applyUrl}
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: 13.5, color: "var(--color-primary)", fontWeight: 600 }}
-              >
-                View posting &rarr;
-              </a>
-            )}
-          </div>
-        </div>
-      ))}
-
-      {data && data.totalPages > 1 && (
-        <nav className="pager" aria-label="Pages">
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
-            &larr; Prev
-          </button>
-          {pageWindow(page, data.totalPages).map((p, i) =>
-            p === "…" ? (
-              <span key={`gap-${i}`} style={{ padding: "0 4px" }}>
-                …
-              </span>
-            ) : (
-              <button
-                key={p}
-                className={p === page ? "current" : ""}
-                onClick={() => setPage(p)}
-                aria-current={p === page ? "page" : undefined}
-              >
-                {p}
-              </button>
-            )
-          )}
-          <button disabled={page >= data.totalPages} onClick={() => setPage(page + 1)}>
-            Next &rarr;
-          </button>
-        </nav>
-      )}
       {data && data.total > 0 && (
-        <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--color-text-muted)" }}>
-          {data.total} job{data.total === 1 ? "" : "s"} to go through
+        <div className="jb-pager-row">
+          <nav className="jb-pager" aria-label="Pages">
+            <button disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Previous page">
+              &lsaquo;
+            </button>
+            {pageWindow(page, data.totalPages).map((p, i) =>
+              p === "…" ? (
+                <span key={`gap-${i}`}>…</span>
+              ) : (
+                <button
+                  key={p}
+                  className={p === page ? "on" : ""}
+                  onClick={() => setPage(p)}
+                  aria-current={p === page ? "page" : undefined}
+                >
+                  {p}
+                </button>
+              )
+            )}
+            <button disabled={page >= data.totalPages} onClick={() => setPage(page + 1)} aria-label="Next page">
+              &rsaquo;
+            </button>
+          </nav>
+          <span className="jb-muted">
+            Showing {from}&ndash;{to} of {data.total} jobs
+          </span>
         </div>
       )}
     </div>
