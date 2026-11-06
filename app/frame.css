@@ -1,0 +1,66 @@
+.app-footer {
+  text-align: center;
+  padding: 28px 16px 36px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.app-footer a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 18px 0 4px;
+  flex-wrap: wrap;
+}
+.pager button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pager button.current {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.pager button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn-green {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+.btn-green:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+.btn-green:disabled {
+  opacity: 0.6;
+}
+.list-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 22px 0 10px;
+}
+.page-intro h1 {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+.page-intro p {
+  margin: 0 0 16px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}

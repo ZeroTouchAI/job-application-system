@@ -1,31 +1,40 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useContext, useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { ChevronDownIcon } from "../icons";
+import { InFrameContext } from "./frameContext";
 
 interface AppHeaderProps {
-  active: "dashboard" | "resume" | "jobs" | "deck" | "queue";
+  /** Kept for older pages; the active tab now comes from the URL. */
+  active?: string;
 }
 
-export default function AppHeader({ active }: AppHeaderProps) {
+const NAV: { href: string; label: string; match: string[] }[] = [
+  { href: "/dashboard", label: "Dashboard", match: ["/dashboard", "/deck"] },
+  { href: "/list", label: "List view", match: ["/list"] },
+  { href: "/profile", label: "Add/Edit Resume", match: ["/profile"] },
+  { href: "/interested", label: "Interested", match: ["/interested", "/queue"] },
+  { href: "/passed", label: "Passed", match: ["/passed"] },
+  { href: "/jobs", label: "Add/Edit Jobs", match: ["/jobs"] },
+];
+
+export default function AppHeader(_props: AppHeaderProps) {
+  const inFrame = useContext(InFrameContext);
+  const pathname = usePathname() || "";
   const [fullName, setFullName] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [newCount, setNewCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (inFrame) return;
     fetch("/api/profile")
       .then((r) => r.json())
       .then((data) => setFullName(data.profile?.fullName || null))
       .catch(() => {});
-
-    fetch("/api/notifications")
-      .then((r) => r.json())
-      .then((data) => setNewCount(data.newCount || 0))
-      .catch(() => {});
-  }, []);
+  }, [inFrame]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -36,6 +45,10 @@ export default function AppHeader({ active }: AppHeaderProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // The frame renders the one real header; pages that still render their own
+  // inside it would otherwise show a second copy.
+  if (inFrame) return null;
 
   const initials = fullName
     ? fullName
@@ -53,40 +66,26 @@ export default function AppHeader({ active }: AppHeaderProps) {
           <span className="app-logo-icon">
             <img src="/joby-logo.png" alt="Joby" width={24} height={24} />
           </span>
-          <span className="app-logo-block">
-            Joby
-            <span className="powered-by">
-              Powered by{" "}
-              <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
-                ZeroTouchAI.com
-              </a>
-            </span>
-          </span>
+          <span className="app-logo-block">Joby</span>
         </Link>
 
         <nav className="app-nav-links">
-          <Link href="/dashboard" className={active === "dashboard" ? "active-nav" : ""}>
-            Dashboard
-          </Link>
-          <Link href="/deck" className={active === "deck" ? "active-nav" : ""}>
-            Swipe
-          </Link>
-          <Link href="/queue" className={active === "queue" ? "active-nav" : ""}>
-            Queue
-          </Link>
-          <Link href="/profile" className={active === "resume" ? "active-nav" : ""}>
-            Add/Edit Resume
-          </Link>
-          <Link href="/jobs" className={active === "jobs" ? "active-nav" : ""}>
-            Add/Edit Jobs
-          </Link>
+          {NAV.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={
+                item.match.some((m) => pathname === m || pathname.startsWith(m + "/"))
+                  ? "active-nav"
+                  : ""
+              }
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="app-header-right">
-          <div className={`new-jobs-pill${newCount > 0 ? " has-new" : ""}`}>
-            {newCount} new job{newCount === 1 ? "" : "s"} found
-          </div>
-
           <div className="user-menu" ref={menuRef}>
             <button
               className="user-menu-trigger"
