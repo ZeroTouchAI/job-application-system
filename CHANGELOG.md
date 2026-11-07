@@ -16,6 +16,8 @@ features or visible changes, major for breaking changes to data or behaviour.
 - Favicon and app icon use the Joby logo.
 - App version in the footer, `CHANGELOG.md`, and a CI check that requires a version bump.
 - Bottom tab bar on phones.
+- Daily sync (every morning) with recency-limited Apify runs, so new jobs arrive each day within the $4.50/month cap. `NEW` badge on cards posted in the last two days.
+- Pipeline strip (Found, Interested, Applied, Interview, Offer), count-up numbers, dark mode and a compact density option (avatar menu), province filter chips on the list view, phone haptics on swipe, pop animation when a job is marked applied.
 
 ### Changed
 - Swipe deck is the home page; list view is the second tab (10 per page).

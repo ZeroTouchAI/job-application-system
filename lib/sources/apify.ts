@@ -157,6 +157,11 @@ export async function fetchApifyJobs(): Promise<(RawPosting & PostingExtras)[]> 
     .filter(Boolean);
   const country = process.env.APIFY_COUNTRY || "Canada";
 
+  // Only pay for postings newer than the last daily run. The sync runs every
+  // morning, so a 1 day window means every result is new that day.
+  const sinceDays = Math.max(1, Math.floor(Number(process.env.APIFY_POSTED_SINCE_DAYS) || 1));
+  const postedSince = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10);
+
   // Distinct saved searches that have a keyword.
   const criteria = await db.searchCriteria.findMany();
   const seen = new Set<string>();
@@ -194,6 +199,9 @@ export async function fetchApifyJobs(): Promise<(RawPosting & PostingExtras)[]> 
           keyword: search.keyword,
           location: search.location,
           platforms,
+          posted_since: postedSince,
+          // Ask for CAD so pay is comparable across boards.
+          currency: "CAD",
           // max_results is per platform for this actor.
           max_results: Math.max(1, Math.floor(plan.maxItemsPerSearch / platforms.length)),
         },
