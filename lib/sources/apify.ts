@@ -2,6 +2,8 @@ import type { RawPosting } from "./arbeitnow";
 import { db } from "../db";
 import { planBoardsRun } from "./budget";
 import { isCanadian } from "./canada";
+import { normalizePeriod, normalizeWorkMode } from "../salary";
+import type { PostingExtras } from "../salary";
 
 /**
  * Apify job-board source (Indeed + LinkedIn by default) via
@@ -97,7 +99,11 @@ async function runActor(
   return Array.isArray(items) ? items : [];
 }
 
-function toPosting(item: Item): RawPosting | null {
+function num(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function toPosting(item: Item): (RawPosting & PostingExtras) | null {
   const title = str(item["title"]);
   const platform = (str(item["platform"]) || "board").toLowerCase();
   const platformUrl = str(item["platform_url"]);
@@ -126,14 +132,21 @@ function toPosting(item: Item): RawPosting | null {
     title,
     company: str(item["company_name"]) || "Unknown",
     location,
-    remote: item["is_remote"] === true,
+    remote: item["is_remote"] === true || normalizeWorkMode(str(item["work_mode"])) === "remote",
     rawText: description || title,
     applyUrl,
     applyEmail: null,
+    salaryMin: num(item["salary_minimum"]),
+    salaryMax: num(item["salary_maximum"]),
+    salaryCurrency: str(item["salary_currency"]),
+    salaryPeriod: normalizePeriod(str(item["salary_period"])),
+    logoUrl: str(item["company_logo"]),
+    postedAt: str(item["posted_date"]),
+    workMode: normalizeWorkMode(str(item["work_mode"])),
   };
 }
 
-export async function fetchApifyJobs(): Promise<RawPosting[]> {
+export async function fetchApifyJobs(): Promise<(RawPosting & PostingExtras)[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) return []; // same no-op pattern as USAJobs
 
@@ -143,6 +156,11 @@ export async function fetchApifyJobs(): Promise<RawPosting[]> {
     .map((p) => p.trim())
     .filter(Boolean);
   const country = process.env.APIFY_COUNTRY || "Canada";
+
+  // Only pay for postings newer than the last daily run. The sync runs every
+  // morning, so a 1 day window means every result is new that day.
+  const sinceDays = Math.max(1, Math.floor(Number(process.env.APIFY_POSTED_SINCE_DAYS) || 1));
+  const postedSince = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10);
 
   // Distinct saved searches that have a keyword.
   const criteria = await db.searchCriteria.findMany();
@@ -170,7 +188,7 @@ export async function fetchApifyJobs(): Promise<RawPosting[]> {
     );
   }
 
-  const out: RawPosting[] = [];
+  const out: (RawPosting & PostingExtras)[] = [];
   for (const search of searches.slice(0, plan.searches)) {
     try {
       const items = await runActor(
@@ -181,6 +199,9 @@ export async function fetchApifyJobs(): Promise<RawPosting[]> {
           keyword: search.keyword,
           location: search.location,
           platforms,
+          posted_since: postedSince,
+          // Ask for CAD so pay is comparable across boards.
+          currency: "CAD",
           // max_results is per platform for this actor.
           max_results: Math.max(1, Math.floor(plan.maxItemsPerSearch / platforms.length)),
         },

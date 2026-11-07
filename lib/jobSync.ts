@@ -9,6 +9,8 @@ import { fetchApifyJobs } from "./sources/apify";
 import { fetchAshbyJobs } from "./sources/ashby";
 import { SEED_BOARDS } from "./sources/seedBoards";
 import { canadaOnly, isCanadian } from "./sources/canada";
+import { salaryFor } from "./salary";
+import type { PostingExtras } from "./salary";
 import { extractListedApplyEmail } from "./sources/extractListedEmail";
 import { scoreMatch, locationMatches } from "./engine/matchEngine";
 import type { MatchResult } from "./engine/matchEngine";
@@ -26,7 +28,9 @@ export interface JobSyncResult {
 // hundreds of simultaneous DB connections at once.
 const UPSERT_CONCURRENCY = 25;
 
-async function collectAllPostings(): Promise<RawPosting[]> {
+type Posting = RawPosting & PostingExtras;
+
+async function collectAllPostings(): Promise<Posting[]> {
   const allCriteria = await db.searchCriteria.findMany();
 
   const defaultGreenhouse = (process.env.GREENHOUSE_DEFAULT_BOARDS || "")
@@ -61,7 +65,7 @@ async function collectAllPostings(): Promise<RawPosting[]> {
     c.leverBoards.forEach((b: string) => leverBoards.add(b));
   }
 
-  const results: RawPosting[] = [];
+  const results: Posting[] = [];
 
   // Arbeitnow: one call per distinct saved search (niche + location),
   // so each tracked role gets its own targeted results rather than
@@ -249,6 +253,16 @@ export async function runJobSync(): Promise<JobSyncResult> {
 
   for (const raw of rawPostings) {
     const applyEmail = extractListedApplyEmail(raw.rawText);
+    const pay = salaryFor(raw);
+    const extra = {
+      salaryMin: pay.min,
+      salaryMax: pay.max,
+      salaryCurrency: pay.currency,
+      salaryPeriod: pay.period,
+      logoUrl: raw.logoUrl ?? null,
+      postedAt: raw.postedAt && !Number.isNaN(Date.parse(raw.postedAt)) ? new Date(raw.postedAt) : null,
+      workMode: raw.workMode ?? (raw.remote ? "remote" : null),
+    };
 
     const posting = await db.jobPosting.upsert({
       where: { source_sourceId: { source: raw.source, sourceId: raw.sourceId } },
@@ -260,6 +274,7 @@ export async function runJobSync(): Promise<JobSyncResult> {
         rawText: raw.rawText,
         applyUrl: raw.applyUrl,
         applyEmail,
+        ...extra,
       },
       create: {
         source: raw.source,
@@ -271,6 +286,7 @@ export async function runJobSync(): Promise<JobSyncResult> {
         rawText: raw.rawText,
         applyUrl: raw.applyUrl,
         applyEmail,
+        ...extra,
       },
     });
 

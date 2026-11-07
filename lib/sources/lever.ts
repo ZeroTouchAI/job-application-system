@@ -1,4 +1,6 @@
 import type { RawPosting } from "./arbeitnow";
+import { normalizeWorkMode } from "../salary";
+import type { PostingExtras } from "../salary";
 
 /**
  * Lever's public postings API. Per-company, unauthenticated, meant for
@@ -16,13 +18,33 @@ interface LeverPosting {
   categories: { location?: string; commitment?: string };
   descriptionPlain: string;
   hostedUrl: string;
+  createdAt?: number;
+  workplaceType?: string;
+  salaryRange?: {
+    min?: number;
+    max?: number;
+    currency?: string;
+    interval?: string;
+  };
 }
 
 function isRemote(location?: string): boolean {
   return /remote/i.test(location || "");
 }
 
-export async function fetchLeverJobs(company: string): Promise<RawPosting[]> {
+function intervalToPeriod(interval?: string): string | null {
+  const v = (interval || "").toLowerCase();
+  if (v.includes("year")) return "year";
+  if (v.includes("month")) return "month";
+  if (v.includes("week")) return "week";
+  if (v.includes("day")) return "day";
+  if (v.includes("hour")) return "hour";
+  return null;
+}
+
+export async function fetchLeverJobs(
+  company: string
+): Promise<(RawPosting & PostingExtras)[]> {
   const url = `https://api.lever.co/v0/postings/${company}?mode=json`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
 
@@ -43,5 +65,12 @@ export async function fetchLeverJobs(company: string): Promise<RawPosting[]> {
     rawText: p.descriptionPlain,
     applyUrl: p.hostedUrl,
     applyEmail: null,
+    salaryMin: p.salaryRange?.min ?? null,
+    salaryMax: p.salaryRange?.max ?? null,
+    salaryCurrency: p.salaryRange?.currency ?? null,
+    salaryPeriod: intervalToPeriod(p.salaryRange?.interval),
+    postedAt: p.createdAt ? new Date(p.createdAt).toISOString() : null,
+    workMode:
+      normalizeWorkMode(p.workplaceType) ?? (isRemote(p.categories?.location) ? "remote" : null),
   }));
 }

@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { refreshFrame } from "../components/AppFrame";
-import { DownloadIcon, FileTextIcon } from "../icons";
-import "../swipe.css";
+import { JobLogo, LocationLine } from "../components/jobui";
+import { useMaterials } from "../components/materials";
+import { BriefcaseI } from "../components/jbicons";
 
 interface Item {
   id: string;
@@ -16,45 +17,24 @@ interface Item {
   location: string | null;
   remote: boolean;
   sourceLabel: string;
-  attribution: string | null;
   applyModeLabel: string;
   applyUrl: string | null;
   applyEmail: string | null;
-}
-
-interface ReadyMaterials {
-  jobTitle: string;
-  company: string;
-  applyUrl: string | null;
-  resumeBase64: string;
-  resumeFileName: string;
-  coverLetterBase64: string;
-  coverLetterFileName: string;
+  appliedAt: string | null;
+  salaryText: string | null;
+  logoUrl: string | null;
+  workMode: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  queued: "Interested",
-  drafted: "Ready to apply",
   applied: "Applied",
   interview: "Interview",
   offer: "Offer",
 };
 
-function downloadBase64Docx(base64: string, fileName: string) {
-  const byteChars = atob(base64);
-  const bytes = new Uint8Array(byteChars.length);
-  for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
-  const blob = new Blob([bytes], {
-    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+function shortDate(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function InterestedPage() {
@@ -63,8 +43,6 @@ export default function InterestedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
-  const [ready, setReady] = useState<ReadyMaterials | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -91,6 +69,10 @@ export default function InterestedPage() {
     load();
   }, [load]);
 
+  const materials = useMaterials((id) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: "drafted" } : i)));
+  });
+
   async function setStatus(id: string, status: string) {
     setBusyId(id);
     setError(null);
@@ -110,131 +92,82 @@ export default function InterestedPage() {
     }
   }
 
-  async function generate(item: Item) {
-    setGeneratingId(item.id);
-    setError(null);
-    try {
-      const resumeRes = await fetch("/api/generate/resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId: item.id }),
-      });
-      const resumeData = await resumeRes.json();
-      if (!resumeRes.ok) {
-        setError(resumeData.error || "Couldn't generate the resume. Try again.");
-        return;
-      }
-      const coverRes = await fetch("/api/generate/cover-letter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId: item.id }),
-      });
-      const coverData = await coverRes.json();
-      if (!coverRes.ok) {
-        setError(coverData.error || "Couldn't generate the cover letter. Try again.");
-        return;
-      }
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: "drafted" } : i)));
-      setReady({
-        jobTitle: item.title,
-        company: item.company,
-        applyUrl: item.applyUrl,
-        resumeBase64: resumeData.docxBase64,
-        resumeFileName: resumeData.fileName,
-        coverLetterBase64: coverData.docxBase64,
-        coverLetterFileName: coverData.fileName,
-      });
-    } catch {
-      setError("Something went wrong generating your materials. Try again.");
-    } finally {
-      setGeneratingId(null);
-    }
-  }
-
   return (
     <div>
-      <div className="page-intro">
-        <h1>Interested</h1>
+      <div className="jb-page-head">
+        <h1>Interested Jobs</h1>
         <p>
-          Generate your resume and cover letter, finish the application on the employer&apos;s own
-          page, then mark it applied. Joby never submits for you.
+          These are the jobs you&apos;re interested in. Generate your documents, finish the
+          application on the employer&apos;s page, then mark it applied. Joby never submits for you.
         </p>
       </div>
 
-      {error && <div className="form-error">{error}</div>}
-      {loading && <div className="queue-muted">Loading…</div>}
+      {(error || materials.error) && <div className="form-error">{error || materials.error}</div>}
+      {loading && <div className="jb-empty-row">Loading…</div>}
 
       {!loading && items.length === 0 && (
-        <div className="queue-empty">
-          <p>No jobs waiting. Swipe right on a job to add it here.</p>
-          <Link href="/dashboard" className="btn btn-primary">
+        <div className="jb-empty-row">
+          No jobs waiting. Swipe right on a job to add it here.{" "}
+          <Link href="/dashboard" className="jb-link">
             Start swiping
           </Link>
         </div>
       )}
 
       {items.map((item) => (
-        <article className="queue-item" key={item.id}>
-          <div className="queue-item-main">
-            <div className="queue-item-title">
-              {item.topPick && (
-                <span className="queue-star" title="Top pick" aria-label="Top pick">
-                  ★
+        <article className="jb-job" key={item.id}>
+          <div className="jb-job-top">
+            <JobLogo company={item.company} logoUrl={item.logoUrl} size={52} />
+            <div className="jb-job-main">
+              <div className="jb-row-title">
+                {item.topPick && <span className="jb-star" title="Top pick">★</span>}
+                {item.title}
+              </div>
+              <div className="jb-row-sub">{item.company}</div>
+              <div className="jb-job-meta">
+                <LocationLine location={item.location} mode={item.workMode ?? (item.remote ? "remote" : null)} />
+                <span className="jb-job-pay">
+                  <BriefcaseI width={14} height={14} />
+                  {item.salaryText || "Pay not listed"}
                 </span>
-              )}
-              {item.title}
-            </div>
-            <div className="queue-item-sub">
-              {item.company}
-              {item.location ? ` · ${item.location}` : ""}
-              {item.remote ? " · Remote" : ""}
-            </div>
-            <div className="queue-item-meta">
-              {item.matchScore}% match · {item.applyModeLabel} · {item.sourceLabel}
-              {item.attribution ? ` · ${item.attribution}` : ""}
-              {item.status === "drafted" ? " · Resume and cover letter generated" : ""}
+                <span className="jb-muted">
+                  {item.matchScore}% match · {item.applyModeLabel} · {item.sourceLabel}
+                </span>
+              </div>
             </div>
           </div>
-
-          <div className="queue-item-actions">
+          <div className="jb-job-actions">
             <button
-              className="btn btn-primary btn-sm"
-              disabled={generatingId === item.id}
-              onClick={() => generate(item)}
+              className="jb-btn jb-btn-primary"
+              disabled={materials.generatingId === item.id}
+              onClick={() => materials.generate(item)}
             >
-              <FileTextIcon width={15} height={15} />
-              {generatingId === item.id
+              {materials.generatingId === item.id
                 ? "Generating..."
                 : item.status === "drafted"
-                ? "Regenerate resume + cover letter"
-                : "Generate resume + cover letter"}
+                ? "Regenerate Resume + Cover Letter"
+                : "Generate Resume + Cover Letter"}
             </button>
             {item.applyEmail ? (
-              <a className="btn btn-outline btn-sm" href={`mailto:${item.applyEmail}`}>
-                Email them
+              <a className="jb-btn jb-btn-outline" href={`mailto:${item.applyEmail}`}>
+                Email Them
               </a>
             ) : item.applyUrl ? (
-              <a
-                className="btn btn-outline btn-sm"
-                href={item.applyUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open application
+              <a className="jb-btn jb-btn-outline" href={item.applyUrl} target="_blank" rel="noreferrer">
+                Open Application
               </a>
             ) : (
-              <span className="queue-muted">No apply link listed</span>
+              <span className="jb-muted">No apply link listed</span>
             )}
             <button
-              className="btn btn-sm btn-green"
+              className="jb-btn jb-btn-green"
               disabled={busyId === item.id}
               onClick={() => setStatus(item.id, "applied")}
             >
-              Mark as applied
+              Mark as Applied
             </button>
             <button
-              className="btn btn-outline btn-sm"
-              style={{ color: "#b42318", borderColor: "#f3b3ab" }}
+              className="jb-btn jb-btn-outline jb-btn-danger"
               disabled={busyId === item.id}
               onClick={() => setStatus(item.id, "rejected")}
             >
@@ -246,99 +179,42 @@ export default function InterestedPage() {
 
       {applied.length > 0 && (
         <>
-          <div className="list-section-title">Applied ({applied.length})</div>
+          <h2 className="jb-section">
+            <span className="jb-status-check">✓</span> Applied Jobs
+          </h2>
           {applied.map((item) => (
-            <article className="queue-item" key={item.id}>
-              <div className="queue-item-main">
-                <div className="queue-item-title">{item.title}</div>
-                <div className="queue-item-sub">
-                  {item.company}
-                  {item.location ? ` · ${item.location}` : ""}
+            <article className="jb-job jb-job-applied" key={item.id}>
+              <div className="jb-job-top">
+                <JobLogo company={item.company} logoUrl={item.logoUrl} size={46} />
+                <div className="jb-job-main">
+                  <div className="jb-row-title">{item.title}</div>
+                  <div className="jb-job-meta">
+                    <span className="jb-row-sub">{item.company}</span>
+                    <LocationLine location={item.location} mode={item.workMode ?? (item.remote ? "remote" : null)} />
+                  </div>
                 </div>
-                <div className="queue-item-meta">
-                  <span className={`status-pill ${item.status}`}>
-                    {STATUS_LABELS[item.status] || item.status}
-                  </span>
+                <span className={`jb-applied-pill jb-applied-${item.status}`}>
+                  {STATUS_LABELS[item.status] || item.status}
+                  {item.appliedAt ? ` • ${shortDate(item.appliedAt)}` : ""}
+                </span>
+              </div>
+              {(item.status === "applied" || item.status === "interview") && (
+                <div className="jb-job-actions">
+                  <button
+                    className="jb-btn jb-btn-outline jb-btn-sm"
+                    disabled={busyId === item.id}
+                    onClick={() => setStatus(item.id, item.status === "applied" ? "interview" : "offer")}
+                  >
+                    {item.status === "applied" ? "Got an interview" : "Got an offer"}
+                  </button>
                 </div>
-              </div>
-              <div className="queue-item-actions">
-                {item.status === "applied" && (
-                  <button
-                    className="btn btn-outline btn-sm"
-                    disabled={busyId === item.id}
-                    onClick={() => setStatus(item.id, "interview")}
-                  >
-                    Got an interview
-                  </button>
-                )}
-                {item.status === "interview" && (
-                  <button
-                    className="btn btn-outline btn-sm"
-                    disabled={busyId === item.id}
-                    onClick={() => setStatus(item.id, "offer")}
-                  >
-                    Got an offer
-                  </button>
-                )}
-              </div>
+              )}
             </article>
           ))}
         </>
       )}
 
-      {ready && (
-        <div className="modal-overlay" onClick={() => setReady(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Your materials are ready</h2>
-              <button className="modal-close-btn" onClick={() => setReady(null)} aria-label="Close">
-                &times;
-              </button>
-            </div>
-            <p style={{ fontSize: 13.5, color: "var(--color-text-muted)", marginBottom: 18 }}>
-              Download both files, then apply for <strong>{ready.jobTitle}</strong> at{" "}
-              <strong>{ready.company}</strong> using the button below and upload the resume and
-              cover letter there.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
-              <button
-                className="btn btn-outline btn-sm"
-                style={{ justifyContent: "flex-start" }}
-                onClick={() => downloadBase64Docx(ready.resumeBase64, ready.resumeFileName)}
-              >
-                <DownloadIcon width={15} height={15} />
-                Download resume ({ready.resumeFileName})
-              </button>
-              <button
-                className="btn btn-outline btn-sm"
-                style={{ justifyContent: "flex-start" }}
-                onClick={() =>
-                  downloadBase64Docx(ready.coverLetterBase64, ready.coverLetterFileName)
-                }
-              >
-                <DownloadIcon width={15} height={15} />
-                Download cover letter ({ready.coverLetterFileName})
-              </button>
-            </div>
-            {ready.applyUrl ? (
-              <a
-                href={ready.applyUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-primary btn-sm"
-                style={{ width: "100%" }}
-                onClick={() => setReady(null)}
-              >
-                Go to application page &rarr;
-              </a>
-            ) : (
-              <div style={{ fontSize: 12.5, color: "var(--color-text-muted)" }}>
-                No application link on file for this posting. Apply directly with the employer.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {materials.modal}
     </div>
   );
 }

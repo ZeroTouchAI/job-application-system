@@ -15,29 +15,33 @@ Rule from J: **scraping spend stays under $5/month; target cap $4.50/month.** J'
 
 **ATS boards do not need Apify.** Greenhouse, Lever and Ashby publish free keyless APIs. The repo reads them natively (`greenhouse.ts`, `lever.ts`, new `ashby.ts`), so the whole $4.50 goes to the Indeed/LinkedIn actor.
 
-## How the guard works
-`lib/sources/budget.ts` splits the monthly budget over the maximum sync runs in a month (11 for the `*/3` schedule) and caps each run, then splits that across saved searches:
+## Daily fresh jobs
+J wants something new every day, so the sync now runs **every morning** (08:00 UTC, `.github/workflows/sync-jobs.yml`).
 
-- per-run cap = floor(4.50 / 11) = **$0.40**
+- **Free sources do most of the work.** Greenhouse, Lever and Ashby cost nothing, so they run daily and pick up each day's new postings.
+- **Apify only pays for new postings.** Each daily run sends `posted_since` = yesterday (set `APIFY_POSTED_SINCE_DAYS` to widen it), so results are jobs posted in the last day, not repeats. This `posted_since` field is in the actor's input schema but the date format is untested, so check the first run's posted dates.
+- **Salary comes back in CAD** (`currency: "CAD"`).
+- The budget guard now assumes **31 runs a month** (`APIFY_RUNS_PER_MONTH`), so every day is covered.
+
+## How the guard works
+`lib/sources/budget.ts` splits the monthly budget over the maximum number of runs in a month and caps each run, then splits that across saved searches:
+
+- per-run cap = floor(4.50 / 31) = **$0.14**
 - results per search = floor((per-search cap - $0.01 start) / $0.0035)
 - Apify also gets `maxItems` and `maxTotalChargeUsd`, so a run stops itself at the cap.
 
-| Saved searches | Cap per search | Results per search per run | Worst-case month |
+| Saved searches | Cap per search | Results per search per day | Worst-case month |
 |---|---|---|---|
-| 1 | $0.40 | 111 | $4.38 |
-| 2 | $0.20 | 54 | $4.38 |
-| 5 | $0.08 | 20 | $4.40 |
+| 1 | $0.14 | 37 | $4.32 |
+| 3 | $0.046 | 10 | $4.19 |
+| 5 | $0.028 | 5 | $4.26 |
 
-About 1,200 results a month in total. Each extra saved search splits the same pool; it doesn't add to it. Verified by running `planBoardsRun` locally.
+About 1,100 paid results a month at most. Real spend is lower on days with fewer new postings. Each extra saved search splits the same daily pool. Verified by running `planBoardsRun` locally.
 
-## Other schedules (single search)
-| Schedule | Runs/month | Cap per run | Results per run | Results per month |
-|---|---|---|---|---|
-| Every 3rd day (current) | 11 | $0.40 | 111 | 1,221 |
-| Weekly | 5 | $0.90 | 254 | 1,270 |
-| Daily | 31 | $0.14 | 37 | 1,147 |
-
-Fewer, bigger runs waste less on the $0.01 start fee. Differences are small.
+### What "new every day" can and can't promise
+- The deck shows up to 10 jobs a day, best match first, so one new posting a day is enough to keep it fresh.
+- How many new postings exist depends on the market and your saved searches. A very narrow search can have quiet days.
+- A day's paid results are capped (37 for one search), so busy days are cut off at the budget, not at the supply.
 
 ## Caveats
 - Prices are the Free-plan prices read from the live listing on 2026-11-05. They change; update `APIFY_START_PRICE_USD` / `APIFY_RESULT_PRICE_USD`.

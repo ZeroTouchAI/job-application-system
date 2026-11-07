@@ -23,12 +23,29 @@ export async function GET(req: NextRequest) {
   const loc = (params.get("loc") || "").trim();
   const page = Math.max(1, Math.floor(Number(params.get("page")) || 1));
 
+  // `loc` may hold alternatives separated by "|" (the province chips send
+  // e.g. "Ontario|, ON"). A posting matches if it contains any of them.
+  const locParts = loc
+    .split("|")
+    .map((x) => x.trim())
+    .filter(Boolean);
+
   const where = {
     userId,
     status: "suggested",
     swipe: null,
     jobPosting: {
-      ...(loc ? { location: { contains: loc, mode: "insensitive" as const } } : {}),
+      ...(locParts.length
+        ? {
+            AND: [
+              {
+                OR: locParts.map((part) => ({
+                  location: { contains: part, mode: "insensitive" as const },
+                })),
+              },
+            ],
+          }
+        : {}),
       ...(q
         ? {
             OR: [

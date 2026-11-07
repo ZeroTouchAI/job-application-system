@@ -1,4 +1,6 @@
 import type { RawPosting } from "./arbeitnow";
+import { extractSalary, normalizePeriod, normalizeWorkMode } from "../salary";
+import type { PostingExtras } from "../salary";
 
 /**
  * Ashby's public Posting API. Keyless, per-company, documented by Ashby for
@@ -22,6 +24,17 @@ interface AshbyJob {
   descriptionHtml?: string;
   jobUrl?: string;
   applyUrl?: string;
+  publishedAt?: string;
+  compensation?: {
+    compensationTierSummary?: string;
+    summaryComponents?: {
+      compensationType?: string;
+      interval?: string;
+      currencyCode?: string;
+      minValue?: number | null;
+      maxValue?: number | null;
+    }[];
+  };
 }
 
 interface AshbyResponse {
@@ -36,7 +49,9 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-export async function fetchAshbyJobs(boardName: string): Promise<RawPosting[]> {
+export async function fetchAshbyJobs(
+  boardName: string
+): Promise<(RawPosting & PostingExtras)[]> {
   const url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(
     boardName
   )}?includeCompensation=true`;
@@ -64,6 +79,11 @@ export async function fetchAshbyJobs(boardName: string): Promise<RawPosting[]> {
         job.descriptionPlain ||
         (job.descriptionHtml ? stripHtml(job.descriptionHtml) : "");
 
+      const comp = (job.compensation?.summaryComponents || []).find(
+        (c) => (c.compensationType || "").toLowerCase() === "salary"
+      );
+      const fromSummary = extractSalary(job.compensation?.compensationTierSummary || "");
+
       return {
         source: "ashby",
         sourceId: `${boardName}:${job.id}`,
@@ -74,6 +94,13 @@ export async function fetchAshbyJobs(boardName: string): Promise<RawPosting[]> {
         rawText: description || job.title,
         applyUrl: job.applyUrl || job.jobUrl || null,
         applyEmail: null,
+        salaryMin: comp?.minValue ?? fromSummary?.min ?? null,
+        salaryMax: comp?.maxValue ?? fromSummary?.max ?? null,
+        salaryCurrency: comp?.currencyCode ?? fromSummary?.currency ?? null,
+        salaryPeriod: normalizePeriod(comp?.interval) ?? fromSummary?.period ?? null,
+        postedAt: job.publishedAt ?? null,
+        workMode:
+          normalizeWorkMode(job.workplaceType) ?? (job.isRemote === true ? "remote" : null),
       };
     });
 }
