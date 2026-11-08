@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import AppHeader from "../components/AppHeader";
+import { refreshFrame } from "../components/AppFrame";
 
 export default function AccountPage() {
   const { data: session } = useSession();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [headline, setHeadline] = useState("");
-  const [yearsExperience, setYearsExperience] = useState("");
+  const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
@@ -29,8 +28,7 @@ export default function AccountPage() {
         const parts = (a.fullName || "").split(" ").filter(Boolean);
         setFirstName(parts[0] || "");
         setLastName(parts.slice(1).join(" ") || "");
-        setHeadline(a.headline || "");
-        setYearsExperience(a.yearsExperience || "");
+        setAddress(a.address || "");
         setCity(a.location || "");
         setPhone(a.phone || "");
         setLinkedinUrl(a.linkedinUrl || "");
@@ -42,29 +40,20 @@ export default function AccountPage() {
     setSaving(true);
     setSaved(false);
     setError(null);
-
     try {
       const res = await fetch("/api/account", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          headline,
-          yearsExperience,
-          city,
-          phone,
-          linkedinUrl,
-        }),
+        body: JSON.stringify({ firstName, lastName, address, city, phone, linkedinUrl }),
       });
-
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || "Something went wrong saving that.");
         return;
       }
-
       setSaved(true);
+      refreshFrame();
+      window.location.reload();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -73,114 +62,57 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="profile-shell">
-      <AppHeader active="dashboard" />
+    <div>
+      <div className="jb-page-head">
+        <h1>Your Profile</h1>
+        <p>These details fill in the header of your resume and cover letter when Joby generates them.</p>
+      </div>
 
-      <section className="profile-hero">
-        <div className="container">
-          <div className="eyebrow">Your details</div>
-          <h1>Profile</h1>
-          <p>
-            These details get used to fill in your resume and cover letter
-            headers when we generate them for you.
-          </p>
-        </div>
-      </section>
+      <div className="jb-panel">
+        {loading ? (
+          <div className="jb-muted">Loading...</div>
+        ) : (
+          <>
+            {error && <div className="jb-error">{error}</div>}
+            {saved && <div className="jb-notice">Saved.</div>}
 
-      <div className="profile-body">
-        <div className="profile-card">
-          {loading ? (
-            <div>Loading...</div>
-          ) : (
-            <>
-              {error && <div className="form-error">{error}</div>}
-              {saved && (
-                <div
-                  style={{
-                    background: "var(--color-primary-soft)",
-                    color: "var(--color-primary)",
-                    fontSize: 13,
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    marginBottom: 16,
-                  }}
-                >
-                  Saved.
-                </div>
-              )}
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div className="field">
-                  <label htmlFor="firstName">First name</label>
-                  <input
-                    id="firstName"
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="lastName">Last name</label>
-                  <input
-                    id="lastName"
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                  />
-                </div>
+            <div className="jb-form-grid">
+              <div className="jb-field">
+                <label htmlFor="firstName">First name</label>
+                <input id="firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </div>
+              <div className="jb-field">
+                <label htmlFor="lastName">Last name</label>
+                <input id="lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} />
               </div>
 
-              <div className="field">
-                <label htmlFor="headline">Field / classification</label>
+              <div className="jb-field full">
+                <label htmlFor="address">Address</label>
                 <input
-                  id="headline"
+                  id="address"
                   type="text"
-                  value={headline}
-                  onChange={(e) => setHeadline(e.target.value)}
-                  placeholder="e.g. AI & Automation, Data Center"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Street address (optional)"
                 />
               </div>
 
-              <div className="field">
-                <label htmlFor="yearsExperience">Years of experience</label>
-                <input
-                  id="yearsExperience"
-                  type="text"
-                  value={yearsExperience}
-                  onChange={(e) => setYearsExperience(e.target.value)}
-                  placeholder="e.g. 2 years"
-                />
-              </div>
-
-              <div className="field">
+              <div className="jb-field">
                 <label htmlFor="city">City</label>
-                <input id="city" type="text" value={city} onChange={(e) => setCity(e.target.value)} />
+                <input id="city" type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Scarborough" />
               </div>
-
-              <div className="field">
+              <div className="jb-field">
                 <label htmlFor="phone">Phone number</label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
+                <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
 
-              <div className="field">
+              <div className="jb-field">
                 <label htmlFor="email">Email address</label>
-                <input
-                  id="email"
-                  type="email"
-                  value={session?.user?.email || ""}
-                  disabled
-                  style={{ background: "var(--color-bg-subtle)", color: "var(--color-text-muted)" }}
-                />
-                <div className="field-hint">This is the email you log in with.</div>
+                <input id="email" type="email" value={session?.user?.email || ""} disabled />
+                <div className="jb-hint">This is the email you log in with.</div>
               </div>
-
-              <div className="field">
-                <label htmlFor="linkedinUrl">LinkedIn URL</label>
+              <div className="jb-field">
+                <label htmlFor="linkedinUrl">LinkedIn ID</label>
                 <input
                   id="linkedinUrl"
                   type="text"
@@ -189,13 +121,15 @@ export default function AccountPage() {
                   placeholder="linkedin.com/in/yourname"
                 />
               </div>
+            </div>
 
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            <div className="jb-actions">
+              <button className="jb-btn jb-btn-primary" onClick={handleSave} disabled={saving}>
                 {saving ? "Saving..." : "Save profile"}
               </button>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

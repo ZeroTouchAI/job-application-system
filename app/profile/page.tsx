@@ -1,16 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import AppHeader from "../components/AppHeader";
-import {
-  UploadIcon,
-  ShieldIcon,
-  UserCheckIcon,
-  DatabaseIcon,
-  CheckIcon,
-} from "../icons";
+import { refreshFrame } from "../components/AppFrame";
+import { CheckI, FileI } from "../components/jbicons";
 
 interface ParsedProfile {
   fullName?: string;
@@ -18,31 +11,23 @@ interface ParsedProfile {
   technicalSkills?: { name: string; items: string[] }[];
 }
 
-const TRUST_ITEMS = [
-  { icon: ShieldIcon, title: "Never invented", sub: "Only what you wrote" },
-  { icon: UserCheckIcon, title: "You stay in control", sub: "Review anytime" },
-  { icon: DatabaseIcon, title: "No LinkedIn scraping", sub: "Ever" },
-];
-
 export default function ProfilePage() {
-  const router = useRouter();
   const [pastedText, setPastedText] = useState("");
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedProfile | null>(null);
-  const [skills, setSkills] = useState<{ name: string; items: string[] }[]>([]);
+  const [hasResume, setHasResume] = useState(false);
 
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
-      .then((data) => setSkills(data.profile?.technicalSkills || []))
+      .then((data) => setHasResume(((data.profile?.workExperience || []).length || 0) > 0))
       .catch(() => {});
   }, []);
 
   async function handleSave() {
     setError(null);
     setStatus("saving");
-
     try {
       const res = await fetch("/api/profile/parse", {
         method: "POST",
@@ -50,138 +35,104 @@ export default function ProfilePage() {
         body: JSON.stringify({ text: pastedText }),
       });
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error || "Something went wrong processing that.");
         setStatus("idle");
         return;
       }
-
       setParsed(data.profile);
-      setSkills(data.profile?.technicalSkills || []);
       setStatus("done");
+      refreshFrame();
+      window.location.reload();
     } catch {
       setError("Something went wrong. Please try again.");
       setStatus("idle");
     }
   }
 
+  const skillCount = parsed?.technicalSkills?.reduce((n, c) => n + c.items.length, 0) || 0;
+
   return (
-    <div className="profile-shell">
-      <AppHeader active="resume" />
+    <div>
+      <div className="jb-page-head">
+        <h1>{hasResume ? "Update your resume" : "Add your resume"}</h1>
+        <p>
+          Paste your resume text, or your LinkedIn profile text, copied by hand or from LinkedIn&apos;s own data
+          export. Joby only extracts what is written there, and your roles, years of service and skills appear
+          in the sidebar.
+        </p>
+      </div>
 
-      <section className="profile-hero">
-        <div className="container">
-          <div className="eyebrow">Step 1</div>
-          <h1>Add your resume</h1>
-          <p>
-            Paste your resume text, or your LinkedIn profile text, copied by
-            hand or from LinkedIn&apos;s own data export. We only extract
-            what&apos;s actually written here. Nothing is invented, and Joby
-            never scrapes LinkedIn on your behalf.
-          </p>
-        </div>
-      </section>
-
-      <div className="profile-body">
+      <div className="jb-panel">
         {status === "done" && parsed ? (
-          <div className="profile-card">
-            <div className="profile-card-icon">
-              <CheckIcon width={22} height={22} />
-            </div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>
-              Resume saved
-            </h2>
-            <p style={{ color: "var(--color-text-muted)", fontSize: 14, marginBottom: 18 }}>
-              Here&apos;s what we pulled out. You can refine it anytime.
-            </p>
-
-            <div className="profile-summary-stat">
-              <UserCheckIcon width={20} height={20} style={{ color: "var(--color-primary)" }} />
+          <>
+            <div className="jb-summary">
+              <span className="jb-status-check">
+                <CheckI width={14} height={14} />
+              </span>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>
-                  {parsed.fullName || "Name not detected"}
-                </div>
-                <div style={{ fontSize: 12.5, color: "var(--color-text-muted)" }}>
-                  {parsed.workExperience?.length || 0} work experience entr
-                  {parsed.workExperience?.length === 1 ? "y" : "ies"} found,{" "}
-                  {parsed.technicalSkills?.reduce((n, c) => n + c.items.length, 0) || 0} skills found
+                <b>{parsed.fullName || "Resume saved"}</b>
+                <div className="jb-muted">
+                  {parsed.workExperience?.length || 0} roles and {skillCount} skills found
                 </div>
               </div>
             </div>
-
-            <button
-              className="btn btn-primary"
-              style={{ width: "100%", marginBottom: 10 }}
-              onClick={() => router.push("/dashboard")}
-            >
-              Go to dashboard
-            </button>
-            <button
-              className="btn btn-outline"
-              style={{ width: "100%" }}
-              onClick={() => {
-                setStatus("idle");
-                setParsed(null);
-                setPastedText("");
-              }}
-            >
-              Paste something else instead
-            </button>
-          </div>
-        ) : (
-          <div className="profile-card">
-            <div className="profile-card-icon">
-              <UploadIcon width={22} height={22} />
-            </div>
-
-            {error && <div className="form-error">{error}</div>}
-
-            <textarea
-              className="profile-textarea"
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Paste resume or LinkedIn profile text here..."
-            />
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div className="jb-actions">
+              <Link href="/dashboard" className="jb-btn jb-btn-primary">
+                Go to dashboard
+              </Link>
               <button
-                className="btn btn-primary"
+                className="jb-btn jb-btn-outline"
+                onClick={() => {
+                  setStatus("idle");
+                  setParsed(null);
+                  setPastedText("");
+                }}
+              >
+                Paste something else
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="jb-panel-title">
+              <span className="jb-ico-box">
+                <FileI width={18} height={18} />
+              </span>
+              Resume text
+            </h2>
+            <p className="jb-panel-sub">One resume is all you need. Pasting a new one replaces the current one.</p>
+
+            {error && <div className="jb-error">{error}</div>}
+
+            <div className="jb-field">
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste resume or LinkedIn profile text here..."
+                aria-label="Resume text"
+              />
+            </div>
+            <div className="jb-actions">
+              <button
+                className="jb-btn jb-btn-primary"
                 disabled={status === "saving" || pastedText.trim().length < 40}
                 onClick={handleSave}
               >
                 {status === "saving" ? "Processing..." : "Save resume"}
               </button>
-              <Link href="/dashboard" style={{ fontSize: 13.5, color: "var(--color-text-muted)" }}>
+              <Link href="/dashboard" className="jb-muted">
                 Skip for now
               </Link>
             </div>
-          </div>
+          </>
         )}
+      </div>
 
-        {skills.length > 0 && (
-          <div className="profile-card">
-            <div className="side-card-title" style={{ marginBottom: 12 }}>
-              Top skills
-            </div>
-            <div className="skill-chip-row">
-              {skills.flatMap((c) => c.items).map((skill) => (
-                <span className="skill-chip" key={skill}>
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="profile-trust-grid">
-          {TRUST_ITEMS.map(({ icon: Icon, title, sub }) => (
-            <div className="profile-trust-item" key={title}>
-              <Icon className="icon" />
-              <div className="title">{title}</div>
-              <div className="sub">{sub}</div>
-            </div>
-          ))}
-        </div>
+      <div className="jb-trust">
+        <span>Never invented. Only what you wrote</span>
+        <span>You stay in control</span>
+        <span>No LinkedIn scraping</span>
       </div>
     </div>
   );
