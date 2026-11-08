@@ -17,8 +17,7 @@ export async function GET() {
       phone: true,
       location: true,
       linkedinUrl: true,
-      headline: true,
-      yearsExperience: true,
+      address: true,
     },
   });
 
@@ -46,8 +45,7 @@ export async function PUT(req: NextRequest) {
         phone: body.phone || null,
         location: body.city || null,
         linkedinUrl: body.linkedinUrl || null,
-        headline: body.headline || null,
-        yearsExperience: body.yearsExperience || null,
+        address: body.address || null,
       },
       create: {
         userId,
@@ -56,8 +54,7 @@ export async function PUT(req: NextRequest) {
         phone: body.phone || null,
         location: body.city || null,
         linkedinUrl: body.linkedinUrl || null,
-        headline: body.headline || null,
-        yearsExperience: body.yearsExperience || null,
+        address: body.address || null,
       },
       select: {
         fullName: true,
@@ -65,8 +62,7 @@ export async function PUT(req: NextRequest) {
         phone: true,
         location: true,
         linkedinUrl: true,
-        headline: true,
-        yearsExperience: true,
+        address: true,
       },
     });
 
