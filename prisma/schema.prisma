@@ -60,7 +60,8 @@ model Profile {
   fullName    String?
   email       String?
   phone       String?
-  location    String?
+  location    String?  // city
+  address     String?  // street address (optional)
   linkedinUrl String?
 
   /// Field/classification the user works in, e.g. "AI & Automation".
