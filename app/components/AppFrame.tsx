@@ -6,9 +6,10 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { InFrameContext } from "./frameContext";
 import { useMaterials } from "./materials";
+import { formatAreas } from "../../lib/areas";
+import { careerSummary, roleSpan } from "../../lib/resumeStats";
 import {
   BanI,
-  BellI,
   BriefcaseI,
   CheckI,
   ChevronI,
@@ -18,9 +19,11 @@ import {
   HomeI,
   ListI,
   LogoutI,
+  MoonI,
   PencilI,
   PinI,
   SparkleI,
+  SunI,
   TagI,
 } from "./jbicons";
 
@@ -29,8 +32,8 @@ const VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "dev";
 interface ProfileData {
   fullName?: string;
   email?: string;
-  headline?: string;
-  workExperience?: { employer: string; title: string }[];
+  workExperience?: { employer: string; title: string; startDate?: string; endDate?: string }[];
+  certifications?: { name: string }[];
   technicalSkills?: { name: string; items: string[] }[];
 }
 
@@ -48,7 +51,6 @@ interface Stats {
   applied: number;
   interview: number;
   offer: number;
-  appliedJobs: { id: string; title: string; company: string; status: string }[];
 }
 
 interface Current {
@@ -61,25 +63,20 @@ interface Current {
 const NAV = [
   { href: "/dashboard", label: "Dashboard", match: ["/dashboard", "/deck"], Icon: HomeI },
   { href: "/list", label: "List view", match: ["/list"], Icon: ListI },
-  { href: "/profile", label: "Add/Edit Resume", match: ["/profile"], Icon: FileI },
   { href: "/interested", label: "Interested", match: ["/interested", "/queue"], Icon: HeartI },
+  { href: "/applied", label: "Applied", match: ["/applied"], Icon: CheckI },
   { href: "/passed", label: "Passed", match: ["/passed"], Icon: BanI },
   { href: "/jobs", label: "Add/Edit Jobs", match: ["/jobs"], Icon: BriefcaseI },
+  { href: "/profile", label: "Add/Edit Resume", match: ["/profile"], Icon: FileI },
 ];
 
 const TABS = [
   { href: "/dashboard", label: "Swipe", Icon: HomeI },
   { href: "/list", label: "List", Icon: ListI },
   { href: "/interested", label: "Interested", Icon: HeartI },
+  { href: "/applied", label: "Applied", Icon: CheckI },
   { href: "/passed", label: "Passed", Icon: BanI },
-  { href: "/profile", label: "Resume", Icon: FileI },
 ];
-
-const STATUS_LABELS: Record<string, string> = {
-  applied: "Applied",
-  interview: "Interview",
-  offer: "Offer",
-};
 
 /** Pages call this after a swipe or status change so the sidebars update now. */
 export function refreshFrame() {
@@ -152,27 +149,23 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [criteria, setCriteria] = useState<SearchCriteria[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [newCount, setNewCount] = useState(0);
   const [current, setCurrent] = useState<Current | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
-  const menuRef = useRef<HTMLDivElement>(null);
 
   // Remember the look the user picked on this device.
   useEffect(() => {
     try {
       const t = localStorage.getItem("joby-theme");
-      const d = localStorage.getItem("joby-density");
       if (t === "dark" || t === "light") setTheme(t);
-      if (d === "compact" || d === "comfortable") setDensity(d);
     } catch {
       /* storage blocked: keep defaults */
     }
   }, []);
-  function pick(key: string, value: string) {
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
     try {
-      localStorage.setItem(key, value);
+      localStorage.setItem("joby-theme", next);
     } catch {
       /* ignore */
     }
@@ -199,53 +192,57 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
       .then((r) => r.json())
       .then((d) => setCriteria(d.criteria || []))
       .catch(() => {});
-    fetch("/api/notifications")
-      .then((r) => r.json())
-      .then((d) => setNewCount(d.newCount || 0))
-      .catch(() => {});
     loadStats();
 
     const onRefresh = () => loadStats();
+    const onSearches = () => {
+      fetch("/api/user/search-settings")
+        .then((r) => r.json())
+        .then((d) => setCriteria(d.criteria || []))
+        .catch(() => {});
+    };
     const onVisible = () => {
       if (document.visibilityState === "visible") loadStats();
     };
     const onCurrent = (e: Event) => setCurrent((e as CustomEvent<Current | null>).detail ?? null);
-    const onClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
     window.addEventListener("joby-refresh", onRefresh);
+    window.addEventListener("joby-searches", onSearches);
     window.addEventListener("joby-current", onCurrent);
     document.addEventListener("visibilitychange", onVisible);
-    document.addEventListener("mousedown", onClickOutside);
     const timer = setInterval(loadStats, 15000);
     return () => {
       window.removeEventListener("joby-refresh", onRefresh);
+      window.removeEventListener("joby-searches", onSearches);
       window.removeEventListener("joby-current", onCurrent);
       document.removeEventListener("visibilitychange", onVisible);
-      document.removeEventListener("mousedown", onClickOutside);
       clearInterval(timer);
     };
   }, [loadStats]);
 
   const onDashboard = pathname === "/dashboard" || pathname === "/deck";
-  const showPipeline = onDashboard || pathname === "/interested";
+  const showPipeline = onDashboard || pathname === "/interested" || pathname === "/applied";
   const skills = (profile?.technicalSkills || []).flatMap((c) => c.items);
   const isActive = (m: string[]) => m.some((x) => pathname === x || pathname.startsWith(x + "/"));
   const initials = initialsOf(profile?.fullName);
+  const career = careerSummary(profile?.workExperience || []);
+  const roles = profile?.workExperience || [];
+  const certCount = (profile?.certifications || []).length;
 
   const overview = [
     { label: "Jobs found", value: stats?.found, href: "/list", Icon: BriefcaseI, tone: "blue" },
     { label: "Interested", value: stats?.interested, href: "/interested", Icon: HeartFillI, tone: "green" },
     { label: "Passed", value: stats?.passed, href: "/passed", Icon: BanI, tone: "red" },
-    { label: "Applied", value: stats?.applied, href: "/interested", Icon: CheckI, tone: "ok" },
+    { label: "Applied", value: stats?.applied, href: "/applied", Icon: CheckI, tone: "ok" },
   ];
 
   return (
-    <div className="jb" data-theme={theme} data-density={density}>
+    <div className="jb" data-theme={theme}>
       {/* ---------- Left sidebar ---------- */}
       <aside className="jb-side">
         <Link href="/dashboard" className="jb-brand">
-          <img src="/joby-logo.png" alt="" width={34} height={34} />
+          <span className="jb-brand-tile">
+            <img src="/joby-logo.png" alt="" width={32} height={32} />
+          </span>
           <span>Joby</span>
         </Link>
 
@@ -253,7 +250,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
           <span className="jb-avatar jb-avatar-lg">{initials}</span>
           <div className="jb-user-text">
             <div className="jb-user-name">{profile?.fullName || "Your account"}</div>
-            <div className="jb-user-mail">{profile?.email || profile?.headline || ""}</div>
+            <div className="jb-user-mail">{profile?.email || ""}</div>
           </div>
         </div>
         <Link href="/account" className="jb-ghost-btn">
@@ -278,52 +275,23 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
         <div className="jb-side-title">Job Search</div>
         <div className="jb-ov">
           {criteria.length === 0 && (
-            <Link href="/jobs" className="jb-ov-row">
-              <span className="jb-ov-ico jb-tone-blue">
-                <TagI width={15} height={15} />
-              </span>
-              <span className="jb-ov-label">Set your search</span>
-              <ChevronI width={14} height={14} />
+            <Link href="/jobs" className="jb-search-card">
+              <span className="jb-search-title">Set your search</span>
+              <span className="jb-search-areas">Add a job title and the areas you want</span>
             </Link>
           )}
           {criteria.map((c) => (
-            <div key={c.id}>
-              <Link href="/jobs" className="jb-ov-row">
-                <span className="jb-ov-ico jb-tone-pin">
-                  <PinI width={15} height={15} />
-                </span>
-                <span className="jb-ov-label">{c.location || "Any location"}</span>
-                <ChevronI width={14} height={14} />
-              </Link>
-              <Link href="/jobs" className="jb-ov-row">
-                <span className="jb-ov-ico jb-tone-tag">
-                  <TagI width={15} height={15} />
-                </span>
-                <span className="jb-ov-label">{c.niche}</span>
-                <ChevronI width={14} height={14} />
-              </Link>
-            </div>
+            <Link href="/jobs" className="jb-search-card" key={c.id}>
+              <span className="jb-search-title">
+                <TagI width={14} height={14} /> {c.niche}
+              </span>
+              <span className="jb-search-areas">
+                <PinI width={13} height={13} /> {formatAreas(c.location) || "Anywhere in Canada"}
+              </span>
+              {c.remoteOnly && <span className="jb-search-remote">+ Remote</span>}
+            </Link>
           ))}
         </div>
-
-        <div className="jb-side-title">Application Status</div>
-        {!stats || stats.appliedJobs.length === 0 ? (
-          <div className="jb-side-empty">Jobs you mark as applied show up here.</div>
-        ) : (
-          stats.appliedJobs.map((j) => (
-            <div className="jb-status" key={j.id}>
-              <span className="jb-status-check">
-                <CheckI width={14} height={14} />
-              </span>
-              <div>
-                <div className="jb-status-title">{j.title}</div>
-                <div className="jb-status-sub">
-                  {j.company} &middot; {STATUS_LABELS[j.status] || j.status}
-                </div>
-              </div>
-            </div>
-          ))
-        )}
 
         <button className="jb-logout" onClick={() => signOut({ callbackUrl: "/login" })}>
           <LogoutI width={16} height={16} /> Log Out
@@ -342,43 +310,15 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
           <div className="jb-top-right">
-            <Link href="/list" className="jb-bell" aria-label="New jobs">
-              <BellI width={20} height={20} />
-              {newCount > 0 && <span className="jb-bell-dot">{newCount > 99 ? "99+" : newCount}</span>}
-            </Link>
-            <div className="jb-menu" ref={menuRef}>
-              <button className="jb-avatar" onClick={() => setMenuOpen((v) => !v)} aria-label="Account menu">
-                {initials}
-              </button>
-              {menuOpen && (
-                <div className="jb-menu-pop">
-                  <Link href="/account" onClick={() => setMenuOpen(false)}>
-                    Profile
-                  </Link>
-                  <div className="jb-menu-sep" />
-                  <button
-                    onClick={() => {
-                      const next = theme === "dark" ? "light" : "dark";
-                      setTheme(next);
-                      pick("joby-theme", next);
-                    }}
-                  >
-                    {theme === "dark" ? "Light mode" : "Dark mode"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      const next = density === "compact" ? "comfortable" : "compact";
-                      setDensity(next);
-                      pick("joby-density", next);
-                    }}
-                  >
-                    {density === "compact" ? "Comfortable density" : "Compact density"}
-                  </button>
-                  <div className="jb-menu-sep" />
-                  <button onClick={() => signOut({ callbackUrl: "/login" })}>Log out</button>
-                </div>
-              )}
-            </div>
+            <button
+              className="jb-theme"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
+            >
+              {theme === "dark" ? <SunI width={18} height={18} /> : <MoonI width={18} height={18} />}
+              <span>{theme === "dark" ? "Light" : "Dark"}</span>
+            </button>
           </div>
         </header>
 
@@ -390,6 +330,8 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
                   <b>{o.value ?? "–"}</b> {o.label}
                 </Link>
               ))}
+              <Link href="/jobs">Edit Jobs</Link>
+              <Link href="/profile">Edit Resume</Link>
             </div>
             {showPipeline && <PipelineStrip stats={stats} />}
             <InFrameContext.Provider value={true}>{children}</InFrameContext.Provider>
@@ -404,22 +346,58 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
                 </span>
                 Your Current Resume
               </div>
-              {profile?.fullName ? (
-                <div className="jb-resume">
-                  <span className="jb-status-check">
-                    <CheckI width={14} height={14} />
-                  </span>
-                  <div className="jb-resume-text">
-                    <b>{profile.headline || profile.fullName}</b>
-                    <small>
-                      {(profile.workExperience || []).length} role
-                      {(profile.workExperience || []).length === 1 ? "" : "s"} on file
-                    </small>
+              {profile?.fullName || roles.length > 0 ? (
+                <>
+                  <div className="jb-resume">
+                    <span className="jb-status-check">
+                      <CheckI width={14} height={14} />
+                    </span>
+                    <div className="jb-resume-text">
+                      <b>{profile?.fullName || "Resume on file"}</b>
+                      <small>Last saved resume</small>
+                    </div>
+                    <Link href="/profile" className="jb-mini-btn">
+                      <PencilI width={12} height={12} /> Edit
+                    </Link>
                   </div>
-                  <Link href="/profile" className="jb-mini-btn">
-                    <PencilI width={12} height={12} /> Edit
-                  </Link>
-                </div>
+
+                  <div className="jb-facts">
+                    <div>
+                      <b>{career.label || "\u2013"}</b>
+                      <span>Years of service</span>
+                    </div>
+                    <div>
+                      <b>{roles.length}</b>
+                      <span>Roles</span>
+                    </div>
+                    <div>
+                      <b>{skills.length}</b>
+                      <span>Skills</span>
+                    </div>
+                    <div>
+                      <b>{certCount}</b>
+                      <span>Certifications</span>
+                    </div>
+                  </div>
+
+                  {roles.length > 0 && (
+                    <>
+                      <div className="jb-skills-title">Roles</div>
+                      <ul className="jb-roles">
+                        {roles.slice(0, 6).map((r, i) => (
+                          <li key={`${r.employer}-${i}`}>
+                            <b>{r.title}</b>
+                            <span>
+                              {r.employer}
+                              {roleSpan(r) ? ` \u00b7 ${roleSpan(r)}` : ""}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      {roles.length > 6 && <div className="jb-muted">+ {roles.length - 6} more</div>}
+                    </>
+                  )}
+                </>
               ) : (
                 <div className="jb-side-empty dark">
                   No resume yet.{" "}
@@ -433,7 +411,7 @@ export default function AppFrame({ children }: { children: React.ReactNode }) {
                 <>
                   <div className="jb-skills-title">Key Skills</div>
                   <div className="jb-chips">
-                    {skills.slice(0, 18).map((s) => (
+                    {skills.slice(0, 14).map((s) => (
                       <span className="jb-chip" key={s}>
                         {s}
                       </span>
