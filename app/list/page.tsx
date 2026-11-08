@@ -33,14 +33,6 @@ interface Page {
   totalPages: number;
 }
 
-const PROVINCES: { label: string; loc: string }[] = [
-  { label: "Ontario", loc: "Ontario|, ON" },
-  { label: "British Columbia", loc: "British Columbia|, BC" },
-  { label: "Alberta", loc: "Alberta|, AB" },
-  { label: "Quebec", loc: "Quebec|Qu\u00e9bec|, QC" },
-  { label: "Remote", loc: "Remote" },
-];
-
 /** Page numbers to show: first, last, and a window around the current page. */
 function pageWindow(current: number, total: number): (number | "…")[] {
   const pages = new Set<number>([1, total, current - 1, current, current + 1]);
@@ -157,22 +149,7 @@ export default function ListPage() {
         </button>
       </div>
 
-      <div className="jb-prov" aria-label="Filter by province">
-        {PROVINCES.map((p) => (
-          <button
-            key={p.label}
-            className={locationText === p.loc ? "on" : ""}
-            onClick={() => {
-              setLocationText(locationText === p.loc ? "" : p.loc);
-              setPage(1);
-            }}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="jb-error">{error}</div>}
       {loading && <div className="jb-empty-row">Loading your matches...</div>}
 
       {!loading && data && data.total === 0 && !searchText && !locationText && (
@@ -199,10 +176,10 @@ export default function ListPage() {
                 <div className="jb-row-title">{p.title}</div>
                 <div className="jb-row-sub">{p.company}</div>
               </div>
-              <div className="jb-row-loc">
+              <div className="jb-row-info">
                 <LocationLine location={p.location} mode={p.workMode ?? (p.remote ? "remote" : null)} />
+                <span className="jb-row-pay">{pay || <span className="jb-muted">Pay not listed</span>}</span>
               </div>
-              <div className="jb-row-pay">{pay || <span className="jb-muted">Pay not listed</span>}</div>
               <MatchRing score={app.matchScore} size={50} />
               <div className="jb-row-actions">
                 <button

@@ -26,20 +26,8 @@ interface Item {
   workMode: string | null;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  applied: "Applied",
-  interview: "Interview",
-  offer: "Offer",
-};
-
-function shortDate(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
-}
-
 export default function InterestedPage() {
   const [items, setItems] = useState<Item[]>([]);
-  const [applied, setApplied] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -47,17 +35,13 @@ export default function InterestedPage() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [a, b] = await Promise.all([
-        fetch("/api/queue?view=interested"),
-        fetch("/api/queue?view=applied"),
-      ]);
+      const a = await fetch("/api/queue?view=interested");
       if (a.status === 401) {
         window.location.href = "/login";
         return;
       }
-      if (!a.ok || !b.ok) throw new Error("load failed");
+      if (!a.ok) throw new Error("load failed");
       setItems((await a.json()).items || []);
-      setApplied((await b.json()).items || []);
     } catch {
       setError("Couldn't load your jobs.");
     } finally {
@@ -98,11 +82,12 @@ export default function InterestedPage() {
         <h1>Interested Jobs</h1>
         <p>
           These are the jobs you&apos;re interested in. Generate your documents, finish the
-          application on the employer&apos;s page, then mark it applied. Joby never submits for you.
+          application on the employer&apos;s page, then mark it applied and it moves to Applied. Joby never
+          submits for you.
         </p>
       </div>
 
-      {(error || materials.error) && <div className="form-error">{error || materials.error}</div>}
+      {(error || materials.error) && <div className="jb-error">{error || materials.error}</div>}
       {loading && <div className="jb-empty-row">Loading…</div>}
 
       {!loading && items.length === 0 && (
@@ -176,43 +161,6 @@ export default function InterestedPage() {
           </div>
         </article>
       ))}
-
-      {applied.length > 0 && (
-        <>
-          <h2 className="jb-section">
-            <span className="jb-status-check">✓</span> Applied Jobs
-          </h2>
-          {applied.map((item) => (
-            <article className="jb-job jb-job-applied" key={item.id}>
-              <div className="jb-job-top">
-                <JobLogo company={item.company} logoUrl={item.logoUrl} size={46} />
-                <div className="jb-job-main">
-                  <div className="jb-row-title">{item.title}</div>
-                  <div className="jb-job-meta">
-                    <span className="jb-row-sub">{item.company}</span>
-                    <LocationLine location={item.location} mode={item.workMode ?? (item.remote ? "remote" : null)} />
-                  </div>
-                </div>
-                <span className={`jb-applied-pill jb-applied-${item.status}`}>
-                  {STATUS_LABELS[item.status] || item.status}
-                  {item.appliedAt ? ` • ${shortDate(item.appliedAt)}` : ""}
-                </span>
-              </div>
-              {(item.status === "applied" || item.status === "interview") && (
-                <div className="jb-job-actions">
-                  <button
-                    className="jb-btn jb-btn-outline jb-btn-sm"
-                    disabled={busyId === item.id}
-                    onClick={() => setStatus(item.id, item.status === "applied" ? "interview" : "offer")}
-                  >
-                    {item.status === "applied" ? "Got an interview" : "Got an offer"}
-                  </button>
-                </div>
-              )}
-            </article>
-          ))}
-        </>
-      )}
 
       {materials.modal}
     </div>
