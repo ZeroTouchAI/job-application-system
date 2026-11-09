@@ -26,6 +26,9 @@ The system reads each application's questions and stores answers in a reusable *
 - 2026-11-06: Daily sync for fresh jobs; Apify runs limited to postings from the last day; budget guard now assumes 31 runs/month (worst case about $4.30).
 - 2026-11-06: Adzuna deliberately left until the very end (J's call).
 
+- 2026-11-07: v0.3.0. Strict areas: a job shows only if it is in one of the user's search areas (or is remote and the user switched remote on). Passed/unswiped jobs outside areas are pruned (manual workflow, dry run first); sync also prunes unswiped ones. New logo/favicon from J. Profile, Resume and Jobs pages rebuilt in the new design. Applied status removed from the sidebar; Applied stays on Interested.
+- 2026-11-07: "Today's deck 3/10" is the daily swipe cap (`DAILY_DECK_SIZE`, default 10 per rolling 24h), not the number of jobs found.
+
 ## Versioning rule
 Every change bumps `package.json` version and adds a `CHANGELOG.md` entry. The `Version bump check` workflow fails PRs that don't.
 

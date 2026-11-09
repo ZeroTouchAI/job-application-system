@@ -12,7 +12,9 @@ import { canadaOnly, isCanadian } from "./sources/canada";
 import { salaryFor } from "./salary";
 import type { PostingExtras } from "./salary";
 import { extractListedApplyEmail } from "./sources/extractListedEmail";
-import { scoreMatch, locationMatches } from "./engine/matchEngine";
+import { scoreMatch } from "./engine/matchEngine";
+import { postingAllowed } from "./areas";
+import { pruneUser } from "./prune";
 import type { MatchResult } from "./engine/matchEngine";
 import type { RawPosting } from "./sources/arbeitnow";
 import type { JobPostingAnalysis, Profile } from "./profileSchema";
@@ -190,31 +192,6 @@ async function runInBatches<T>(items: T[], size: number, fn: (item: T) => Promis
 }
 
 /**
- * Decides whether a posting is allowed through for a given user, based
- * on their saved searches' location fields.
- *
- * Rules (per product decision): if the user has at least one saved
- * search with NO location set, treat that as "anywhere is fine" and
- * don't filter by location at all. Otherwise, a posting must either be
- * remote, or location-match at least one of the user's saved searches,
- * to be shown — this is a hard gate, not a scoring factor, so a great
- * skill match in the wrong city is excluded outright.
- */
-function userAllowsPostingLocation(
-  posting: { location: string | null; remote: boolean },
-  criteria: { location: string | null }[]
-): boolean {
-  if (criteria.length === 0) return true; // no saved searches yet — nothing to filter by
-
-  const locationCriteria = criteria.filter((c) => c.location && c.location.trim());
-  if (locationCriteria.length === 0) return true; // every saved search is location-agnostic
-
-  if (posting.remote) return true; // remote roles are accessible regardless of the posted location
-
-  return locationCriteria.some((c) => locationMatches(posting.location, c.location as string));
-}
-
-/**
  * Key used to recognize "the same real-world job" across different
  * internal posting IDs. Sources sometimes reissue the same listing
  * under a new sourceId (a refreshed/bumped posting), which would
@@ -320,6 +297,11 @@ export async function runJobSync(): Promise<JobSyncResult> {
       knownGaps: user.profile.knownGaps,
     };
 
+    // Drop unswiped suggestions that sit outside the user's areas (for
+    // example after they edit a search). Interested, drafted, applied and
+    // passed jobs are left alone here.
+    await pruneUser(user.id, { includePassed: false, dryRun: false });
+
     // Postings this user has already rejected, identified by
     // title+company rather than internal posting ID — see
     // jobIdentityKey() above for why. A reject should stick even if the
@@ -335,7 +317,7 @@ export async function runJobSync(): Promise<JobSyncResult> {
     // Score everything up front and keep only postings above a minimal
     // relevance bar to avoid flooding the dashboard, that pass this
     // user's own saved-search location filter (see
-    // userAllowsPostingLocation above), and that the user hasn't already
+    // postingAllowed in lib/areas.ts), and that the user hasn't already
     // rejected under a different posting ID for the same real job.
     // NOTE: 15-point bar lowered from 40 while the match scoring is still
     // based on crude keyword overlap rather than a richer comparison - a
@@ -343,7 +325,7 @@ export async function runJobSync(): Promise<JobSyncResult> {
     // once matchEngine.ts scoring is improved (e.g. LLM-assisted).
     const qualifying: { id: string; match: MatchResult }[] = [];
     for (const { id, location, remote, analysis } of storedPostings) {
-      if (!userAllowsPostingLocation({ location, remote }, user.searchCriteria)) continue;
+      if (!postingAllowed({ location, remote }, user.searchCriteria)) continue;
       if (rejectedKeys.has(jobIdentityKey(analysis.title, analysis.company))) continue;
       const match = scoreMatch(analysis, profile);
       if (match.matchScore < 15) continue;

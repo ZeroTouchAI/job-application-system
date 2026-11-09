@@ -72,7 +72,7 @@ export default function PassedPage() {
         <p>Jobs you passed on. Changed your mind? Move one back to Interested.</p>
       </div>
 
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="jb-error">{error}</div>}
       {loading && <div className="jb-empty-row">Loading…</div>}
 
       {!loading && items.length === 0 && (
@@ -92,11 +92,9 @@ export default function PassedPage() {
               <div className="jb-row-title">{item.title}</div>
               <div className="jb-row-sub">{item.company}</div>
             </div>
-            <div className="jb-row-loc">
+            <div className="jb-row-info">
               <LocationLine location={item.location} mode={item.workMode ?? (item.remote ? "remote" : null)} />
-            </div>
-            <div className="jb-row-pay">
-              {item.salaryText || <span className="jb-muted">Pay not listed</span>}
+              <span className="jb-row-pay">{item.salaryText || <span className="jb-muted">Pay not listed</span>}</span>
             </div>
             <div className="jb-row-actions">
               {item.applyUrl && (

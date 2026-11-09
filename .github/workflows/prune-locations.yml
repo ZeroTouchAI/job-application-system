@@ -1,0 +1,32 @@
+name: Prune jobs outside my areas
+
+# Manual only. Removes unswiped and passed jobs that sit outside each user's
+# saved areas. Interested, drafted and applied jobs are never touched.
+# Defaults to a dry run: run it once to read the counts, then run it again
+# with dry_run turned off.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (show counts, delete nothing)"
+        type: boolean
+        default: true
+      include_passed:
+        description: "Also remove passed jobs outside my areas"
+        type: boolean
+        default: true
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npx tsx scripts/prune-locations.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          PRUNE_PASSED: ${{ inputs.include_passed }}

@@ -17,7 +17,7 @@ export const metadata = {
   icons: {
     icon: "/joby-logo.png",
     shortcut: "/joby-logo.png",
-    apple: "/joby-logo.png",
+    apple: "/apple-touch-icon.png",
   },
   description:
     "A free, open-source job-search co-pilot by ZeroTouchAI: tailored resumes grounded in your verified skills, job postings sourced from legitimate APIs, applications you always review before they go out.",
