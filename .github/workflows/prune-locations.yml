@@ -15,6 +15,10 @@ on:
         description: "Also remove passed jobs outside my areas"
         type: boolean
         default: true
+      since:
+        description: "Also remove everything that entered the system before this date (YYYY-MM-DD). Applied jobs are kept. Leave empty to skip."
+        type: string
+        default: ""
 
 jobs:
   prune:
@@ -30,3 +34,4 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DRY_RUN: ${{ inputs.dry_run }}
           PRUNE_PASSED: ${{ inputs.include_passed }}
+          SINCE: ${{ inputs.since }}
