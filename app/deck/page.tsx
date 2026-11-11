@@ -22,6 +22,7 @@ interface Card {
   applyModeLabel: string;
   applyUrl?: string | null;
   summary: string;
+  details?: string;
   postedAt: string;
   postedExact?: boolean;
   addedAt?: string;
@@ -48,7 +49,7 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
 /** The visible face of a job card. Also used for the shatter pieces. */
-function CardBody({ card }: { card: Card }) {
+function CardBody({ card, more = false, onMore }: { card: Card; more?: boolean; onMore?: () => void }) {
   return (
     <>
       <div className="jb-card-head">
@@ -79,6 +80,20 @@ function CardBody({ card }: { card: Card }) {
             ? `Matches your skills: ${card.keywordsMatched.slice(0, 3).join(", ")}`
             : "Few skills overlap with your resume. Worth a look?"}
         </span>
+      </div>
+      <div className="jb-card-about">
+        <div className="jb-about-title">About this job</div>
+        <p className={`jb-about-text ${more ? "jb-about-full" : "jb-about-clamp"}`}>
+          {more ? card.details || card.summary : card.summary}
+        </p>
+        {card.keywordsMissing.length > 0 && (
+          <div className="jb-about-miss">Not on your resume: {card.keywordsMissing.slice(0, 4).join(", ")}</div>
+        )}
+        {onMore && (
+          <button type="button" className="jb-more-btn" onPointerDown={(e) => e.stopPropagation()} onClick={onMore}>
+            {more ? "Show less" : "More"}
+          </button>
+        )}
       </div>
       <div className="jb-card-src">
         {card.sourceLabel}
@@ -253,7 +268,7 @@ export default function DeckPage() {
   const [dx, setDx] = useState(0);
   const [dy, setDy] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [more, setMore] = useState(false);
   const [toast, setToast] = useState("");
 
   const start = useRef({ x: 0, y: 0 });
@@ -342,7 +357,7 @@ export default function DeckPage() {
       setCards((c) => c.slice(1));
       setDx(0);
       setDy(0);
-      setExpanded(false);
+      setMore(false);
       setSwipedToday((n) => n + 1);
       setLeft((n) => Math.max(0, n - 1));
       setToast(dir === "left" ? "" : dir === "up" ? "Top pick saved." : "Saved to Interested.");
@@ -430,7 +445,7 @@ export default function DeckPage() {
   }, [commit, undo]);
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (expanded) return;
+    if (more) return;
     start.current = { x: e.clientX, y: e.clientY };
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -563,45 +578,11 @@ export default function DeckPage() {
                     cursor: dragging ? "grabbing" : "grab",
                   }}
                 >
-                  <CardBody card={card} />
-                  <button
-                    type="button"
-                    className="jb-info"
-                    aria-label="Show details"
-                    aria-expanded={expanded}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => setExpanded((v) => !v)}
-                  >
-                    i
-                  </button>
+                  <CardBody card={card} more={more} onMore={() => setMore((v) => !v)} />
 
                   <div className="jb-stamp jb-stamp-like" style={{ opacity: likeOp }}>INTERESTED</div>
                   <div className="jb-stamp jb-stamp-nope" style={{ opacity: nopeOp }}>PASS</div>
                   <div className="jb-stamp jb-stamp-top" style={{ opacity: topOp }}>TOP PICK</div>
-
-                  {expanded && (
-                    <div className="jb-sheet" onPointerDown={(e) => e.stopPropagation()}>
-                      <div className="jb-sheet-head">
-                        <strong>About this job</strong>
-                        <button type="button" aria-label="Close details" onClick={() => setExpanded(false)}>
-                          ×
-                        </button>
-                      </div>
-                      <div className="jb-sheet-posted">
-                        <PostedLines card={card as Parameters<typeof PostedLines>[0]["card"]} />
-                      </div>
-                      <p>{card.summary}</p>
-                      {card.keywordsMissing.length > 0 && (
-                        <div className="jb-sheet-miss">
-                          Not on your resume: {card.keywordsMissing.join(", ")}
-                        </div>
-                      )}
-                      <div className="jb-sheet-src">
-                        {card.sourceLabel}
-                        {card.attribution ? ` · ${card.attribution}` : ""}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </>
             )}
