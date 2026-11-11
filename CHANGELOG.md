@@ -7,6 +7,17 @@ fails a pull request that doesn't bump it.
 Versioning: `MAJOR.MINOR.PATCH`. Patch for fixes and small tweaks, minor for new
 features or visible changes, major for breaking changes to data or behaviour.
 
+## [0.4.0] - 2026-11-09
+### Added
+- Posted date and "Added to Joby" date on the swipe deck, list view and details sheet.
+- List view now has an info button under the match percentage that opens the same details as the deck (summary, posted and added dates, pay, matched and missing skills, source, link to the posting). The list and deck use one shared card shape, so they show the same information.
+- Data retention in the prune tool: `since` date removes everything that entered the system before it. Applied, interview and offer records are kept.
+
+### Changed
+- The whole deck is available instead of 10 a day. Cards load in batches of 100 and the next batch loads as the stack runs low. A daily cap can come back with `DAILY_DECK_SIZE`. The "Today's deck" ring is now "Left in your deck".
+- Add/Edit Resume removed from the top bar (it stays in the right sidebar).
+- Logo in the sidebar is transparent (no white tile).
+
 ## [0.3.0] - 2026-11-07
 ### Added
 - New Joby icon (from J) as the site logo, favicon and phone home-screen icon.
