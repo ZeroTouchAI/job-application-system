@@ -19,6 +19,7 @@ export interface InfoCard {
   applyModeLabel: string;
   applyUrl?: string | null;
   summary: string;
+  details?: string;
   postedAt: string;
   postedExact?: boolean;
   addedAt?: string;
@@ -90,7 +91,7 @@ export function JobDetailsModal({ card, onClose }: { card: InfoCard; onClose: ()
           <PostedLines card={card} />
         </div>
 
-        <p className="jb-details-summary">{card.summary}</p>
+        <p className="jb-details-summary">{card.details || card.summary}</p>
 
         {card.keywordsMatched.length > 0 && (
           <div className="jb-details-skills">

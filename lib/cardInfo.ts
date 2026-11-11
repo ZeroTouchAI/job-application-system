@@ -13,6 +13,7 @@ export function richCard(app: CardSource) {
     postedAt?: Date | null;
     fetchedAt?: Date;
     applyUrl?: string | null;
+    rawText?: string;
   };
   return {
     ...toDeckCard(app),
@@ -20,5 +21,11 @@ export function richCard(app: CardSource) {
     postedExact: !!p.postedAt,
     addedAt: (p.fetchedAt ?? new Date()).toISOString(),
     applyUrl: p.applyUrl ?? null,
+    // The description, tidied and capped, for the open "About this job" text.
+    details: (p.rawText || "")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+      .slice(0, 2000),
   };
 }

@@ -32,3 +32,23 @@
 .jb[data-theme="dark"] .jb-details-miss { color: #fcd34d; }
 .jb[data-theme="dark"] .modal-card, .jb[data-theme="dark"] .jb-details { background: var(--jb-surface); color: var(--jb-ink); }
 .jb-sheet-posted { margin: 8px 0; }
+
+/* ---------- Open job details on the swipe card ---------- */
+.jb-card-zone { height: 600px; }
+.jb-stage { min-height: 760px; }
+.jb-card-about { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--jb-line); }
+.jb-about-title { font-size: 11.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--jb-muted); }
+.jb-about-text { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--jb-ink-2); white-space: pre-line; }
+.jb-about-clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.jb-about-full { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.jb-about-miss { font-size: 12.5px; font-weight: 600; color: #b45309; }
+.jb[data-theme="dark"] .jb-about-miss { color: #fcd34d; }
+.jb-more-btn { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--jb-purple); font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.jb-card-zone .jb-card-src { margin-top: 0; }
+@media (max-width: 900px) { .jb-card-zone { height: 640px; } .jb-stage { min-height: 0; } }
+
+/* ---------- List view buttons: blue Interested, red Pass ---------- */
+.jb-btn-blue { background: #2563eb; color: #fff; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3); }
+.jb-btn-blue:hover { background: #1d4ed8; }
+.jb-btn-red { background: #dc2626; color: #fff; box-shadow: 0 6px 16px rgba(220, 38, 38, 0.28); }
+.jb-btn-red:hover { background: #b91c1c; }
