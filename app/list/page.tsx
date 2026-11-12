@@ -180,14 +180,14 @@ export default function ListPage() {
             </div>
             <div className="jb-row-actions">
               <button
-                className="jb-btn jb-btn-primary jb-btn-sm"
+                className="jb-btn jb-btn-blue jb-btn-sm"
                 disabled={busyId === c.id}
                 onClick={() => swipe(c, "right")}
               >
                 Interested
               </button>
               <button
-                className="jb-btn jb-btn-outline jb-btn-sm"
+                className="jb-btn jb-btn-red jb-btn-sm"
                 disabled={busyId === c.id}
                 onClick={() => swipe(c, "left")}
               >

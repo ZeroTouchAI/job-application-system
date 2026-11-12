@@ -17,6 +17,8 @@ features or visible changes, major for breaking changes to data or behaviour.
 - The whole deck is available instead of 10 a day. Cards load in batches of 100 and the next batch loads as the stack runs low. A daily cap can come back with `DAILY_DECK_SIZE`. The "Today's deck" ring is now "Left in your deck".
 - Add/Edit Resume removed from the top bar (it stays in the right sidebar).
 - Logo in the sidebar is transparent (no white tile).
+- Swipe deck: the job details are shown open on the card (no info button), with a More button for the full description. The card is taller to fit them.
+- List view: Interested is blue and Pass is red.
 
 ## [0.3.0] - 2026-11-07
 ### Added
