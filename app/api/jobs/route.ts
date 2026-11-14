@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../lib/auth";
 import { db } from "../../../lib/db";
+import { richCard } from "../../../lib/cardInfo";
 
 const PAGE_SIZE = 10;
 
@@ -69,7 +70,8 @@ export async function GET(req: NextRequest) {
   ]);
 
   return NextResponse.json({
-    applications,
+    // Same card shape as the swipe deck, so both views show the same details.
+    applications: applications.map((a: (typeof applications)[number]) => richCard(a)),
     total,
     page,
     pageSize: PAGE_SIZE,

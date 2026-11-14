@@ -67,7 +67,6 @@ const NAV = [
   { href: "/applied", label: "Applied", match: ["/applied"], Icon: CheckI },
   { href: "/passed", label: "Passed", match: ["/passed"], Icon: BanI },
   { href: "/jobs", label: "Add/Edit Jobs", match: ["/jobs"], Icon: BriefcaseI },
-  { href: "/profile", label: "Add/Edit Resume", match: ["/profile"], Icon: FileI },
 ];
 
 const TABS = [

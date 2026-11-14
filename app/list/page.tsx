@@ -3,34 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { refreshFrame } from "../components/AppFrame";
 import { JobLogo, LocationLine, MatchRing } from "../components/jobui";
+import { InfoButton, JobDetailsModal, PostedLines } from "../components/JobInfo";
+import type { InfoCard } from "../components/JobInfo";
 import { SearchI, PinI } from "../components/jbicons";
-import { formatSalary } from "../../lib/salary";
-
-interface Application {
-  id: string;
-  matchScore: number;
-  jobPosting: {
-    title: string;
-    company: string;
-    location: string | null;
-    remote: boolean;
-    source: string;
-    applyUrl: string | null;
-    logoUrl: string | null;
-    workMode: string | null;
-    salaryMin: number | null;
-    salaryMax: number | null;
-    salaryCurrency: string | null;
-    salaryPeriod: string | null;
-  };
-}
 
 interface Page {
-  applications: Application[];
+  applications: InfoCard[];
   total: number;
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+/** Posted within the last two days. */
+function isNew(iso: string): boolean {
+  return Date.now() - new Date(iso).getTime() < 2 * 86_400_000;
 }
 
 /** Page numbers to show: first, last, and a window around the current page. */
@@ -53,6 +40,7 @@ export default function ListPage() {
   const [searchText, setSearchText] = useState("");
   const [locationText, setLocationText] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [details, setDetails] = useState<InfoCard | null>(null);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async (p: number, q: string, loc: string) => {
@@ -89,14 +77,14 @@ export default function ListPage() {
     };
   }, [page, searchText, locationText, load]);
 
-  async function swipe(app: Application, dir: "right" | "left") {
-    setBusyId(app.id);
+  async function swipe(card: InfoCard, dir: "right" | "left") {
+    setBusyId(card.id);
     setError(null);
     try {
       const res = await fetch("/api/swipe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId: app.id, dir }),
+        body: JSON.stringify({ applicationId: card.id, dir }),
       });
       if (!res.ok && res.status !== 409) throw new Error(String(res.status));
       refreshFrame();
@@ -116,7 +104,7 @@ export default function ListPage() {
     <div>
       <div className="jb-page-head">
         <h1>Browse Jobs</h1>
-        <p>Search and explore jobs you haven&apos;t swiped on yet.</p>
+        <p>Search and explore jobs you haven&apos;t swiped on yet. The details match the swipe deck.</p>
       </div>
 
       <div className="jb-searchbar">
@@ -166,40 +154,48 @@ export default function ListPage() {
       )}
 
       <div className="jb-rows">
-        {apps.map((app) => {
-          const p = app.jobPosting;
-          const pay = formatSalary(p);
-          return (
-            <div className="jb-row" key={app.id}>
-              <JobLogo company={p.company} logoUrl={p.logoUrl} />
-              <div className="jb-row-main">
-                <div className="jb-row-title">{p.title}</div>
-                <div className="jb-row-sub">{p.company}</div>
+        {apps.map((c) => (
+          <div className="jb-row" key={c.id}>
+            <JobLogo company={c.company} logoUrl={c.logoUrl} />
+            <div className="jb-row-main">
+              <div className="jb-row-title">
+                {c.title}
+                {isNew(c.postedAt) && <span className="jb-new">NEW</span>}
               </div>
-              <div className="jb-row-info">
-                <LocationLine location={p.location} mode={p.workMode ?? (p.remote ? "remote" : null)} />
-                <span className="jb-row-pay">{pay || <span className="jb-muted">Pay not listed</span>}</span>
-              </div>
-              <MatchRing score={app.matchScore} size={50} />
-              <div className="jb-row-actions">
-                <button
-                  className="jb-btn jb-btn-primary jb-btn-sm"
-                  disabled={busyId === app.id}
-                  onClick={() => swipe(app, "right")}
-                >
-                  Interested
-                </button>
-                <button
-                  className="jb-btn jb-btn-outline jb-btn-sm"
-                  disabled={busyId === app.id}
-                  onClick={() => swipe(app, "left")}
-                >
-                  Pass
-                </button>
+              <div className="jb-row-sub">{c.company}</div>
+            </div>
+            <div className="jb-row-info">
+              <LocationLine location={c.location} mode={c.workMode ?? (c.remote ? "remote" : null)} />
+              <span className="jb-row-pay">{c.salaryText || <span className="jb-muted">Pay not listed</span>}</span>
+              <PostedLines card={c} />
+              <div className="jb-row-skills">
+                {c.keywordsMatched.length > 0
+                  ? `Matches your skills: ${c.keywordsMatched.slice(0, 3).join(", ")}`
+                  : "Few skills overlap with your resume."}
               </div>
             </div>
-          );
-        })}
+            <div className="jb-ringcol">
+              <MatchRing score={c.matchScore} size={50} />
+              <InfoButton onClick={() => setDetails(c)} />
+            </div>
+            <div className="jb-row-actions">
+              <button
+                className="jb-btn jb-btn-blue jb-btn-sm"
+                disabled={busyId === c.id}
+                onClick={() => swipe(c, "right")}
+              >
+                Interested
+              </button>
+              <button
+                className="jb-btn jb-btn-red jb-btn-sm"
+                disabled={busyId === c.id}
+                onClick={() => swipe(c, "left")}
+              >
+                Pass
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       {data && data.total > 0 && (
@@ -231,6 +227,8 @@ export default function ListPage() {
           </span>
         </div>
       )}
+
+      {details && <JobDetailsModal card={details} onClose={() => setDetails(null)} />}
     </div>
   );
 }

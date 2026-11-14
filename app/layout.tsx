@@ -3,6 +3,7 @@ import { Fraunces } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
 import "./joby.css";
+import "./joby-v4.css";
 
 const display = Fraunces({
   subsets: ["latin"],

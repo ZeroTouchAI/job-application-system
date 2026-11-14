@@ -51,3 +51,56 @@ export async function pruneUser(
   }
   return result;
 }
+
+export interface PruneOldResult {
+  applications: number;
+  keptApplied: number;
+  postings: number;
+}
+
+/**
+ * Data retention: removes everything older than `cutoff` (by the date the job
+ * entered the system), for every user.
+ *
+ * Applications the user marked applied, interview or offer are kept, because
+ * those are records of real applications; the result reports how many were
+ * kept so they can be removed separately if wanted. Job postings older than
+ * the cutoff that no longer have any application are removed too.
+ */
+export async function pruneOld(opts: { cutoff: Date; dryRun: boolean }): Promise<PruneOldResult> {
+  const { cutoff, dryRun } = opts;
+  const removable = { createdAt: { lt: cutoff }, status: { in: ["suggested", "queued", "drafted", "rejected"] } };
+
+  const applications = await db.application.count({ where: removable });
+  const keptApplied = await db.application.count({
+    where: { createdAt: { lt: cutoff }, status: { in: ["applied", "interview", "offer"] } },
+  });
+
+  if (!dryRun && applications > 0) {
+    await db.application.deleteMany({ where: removable });
+  }
+
+  // Old postings with no application left (for a dry run, those whose only
+  // applications are among the ones that would be removed).
+  const stalePostings = await db.jobPosting.findMany({
+    where: { fetchedAt: { lt: cutoff } },
+    select: { id: true, applications: { select: { status: true, createdAt: true } } },
+  });
+  const orphanIds: string[] = [];
+  for (const p of stalePostings as { id: string; applications: { status: string; createdAt: Date }[] }[]) {
+    const survivors = p.applications.filter(
+      (a) => !(a.createdAt < cutoff && ["suggested", "queued", "drafted", "rejected"].includes(a.status))
+    );
+    if (survivors.length === 0) orphanIds.push(p.id);
+  }
+
+  if (!dryRun) {
+    for (let i = 0; i < orphanIds.length; i += 500) {
+      await db.jobPosting.deleteMany({
+        where: { id: { in: orphanIds.slice(i, i + 500) }, applications: { none: {} } },
+      });
+    }
+  }
+
+  return { applications, keptApplied, postings: orphanIds.length };
+}

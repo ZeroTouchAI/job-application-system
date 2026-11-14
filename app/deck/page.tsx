@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { JobLogo, LocationLine, MatchRing, postedLabel } from "../components/jobui";
+import { JobLogo, LocationLine, MatchRing } from "../components/jobui";
+import { PostedLines } from "../components/JobInfo";
 import { ArrowUpI, BriefcaseI, BulbI, HeartFillI, UndoI, XI } from "../components/jbicons";
 
 type Dir = "right" | "left" | "up";
@@ -21,7 +22,10 @@ interface Card {
   applyModeLabel: string;
   applyUrl?: string | null;
   summary: string;
+  details?: string;
   postedAt: string;
+  postedExact?: boolean;
+  addedAt?: string;
   salaryText: string | null;
   logoUrl: string | null;
   workMode: string | null;
@@ -45,7 +49,7 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
 /** The visible face of a job card. Also used for the shatter pieces. */
-function CardBody({ card }: { card: Card }) {
+function CardBody({ card, more = false, onMore }: { card: Card; more?: boolean; onMore?: () => void }) {
   return (
     <>
       <div className="jb-card-head">
@@ -65,7 +69,9 @@ function CardBody({ card }: { card: Card }) {
       <div className="jb-card-line jb-card-pay">
         <BriefcaseI width={16} height={16} />
         <b>{card.salaryText || "Pay not listed"}</b>
-        <span>&bull; {postedLabel(card.postedAt)}</span>
+      </div>
+      <div className="jb-card-posted">
+        <PostedLines card={card as Parameters<typeof PostedLines>[0]["card"]} />
       </div>
       <div className="jb-card-match">
         <BulbI width={16} height={16} />
@@ -74,6 +80,20 @@ function CardBody({ card }: { card: Card }) {
             ? `Matches your skills: ${card.keywordsMatched.slice(0, 3).join(", ")}`
             : "Few skills overlap with your resume. Worth a look?"}
         </span>
+      </div>
+      <div className="jb-card-about">
+        <div className="jb-about-title">About this job</div>
+        <p className={`jb-about-text ${more ? "jb-about-full" : "jb-about-clamp"}`}>
+          {more ? card.details || card.summary : card.summary}
+        </p>
+        {card.keywordsMissing.length > 0 && (
+          <div className="jb-about-miss">Not on your resume: {card.keywordsMissing.slice(0, 4).join(", ")}</div>
+        )}
+        {onMore && (
+          <button type="button" className="jb-more-btn" onPointerDown={(e) => e.stopPropagation()} onClick={onMore}>
+            {more ? "Show less" : "More"}
+          </button>
+        )}
       </div>
       <div className="jb-card-src">
         {card.sourceLabel}
@@ -240,14 +260,15 @@ export default function DeckPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [limitReached, setLimitReached] = useState(false);
-  const [dailyLimit, setDailyLimit] = useState(10);
+  const [cap, setCap] = useState(0); // 0 = no daily cap
+  const [left, setLeft] = useState(0); // unswiped jobs still in the deck
   const [swipedToday, setSwipedToday] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [fx, setFx] = useState<Fx | null>(null);
   const [dx, setDx] = useState(0);
   const [dy, setDy] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [more, setMore] = useState(false);
   const [toast, setToast] = useState("");
 
   const start = useRef({ x: 0, y: 0 });
@@ -258,7 +279,7 @@ export default function DeckPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/deck");
+      const res = await fetch("/api/deck?limit=100");
       if (res.status === 401) {
         window.location.href = "/login";
         return;
@@ -266,9 +287,9 @@ export default function DeckPage() {
       if (!res.ok) throw new Error(`Deck request failed (${res.status})`);
       const data = await res.json();
       setCards(data.cards || []);
-      setDailyLimit(data.dailyLimit || 10);
+      setCap(data.dailyLimit || 0);
       setSwipedToday(data.swipedToday || 0);
-      setLimitReached((data.remaining || 0) === 0);
+      setLeft(data.remaining || 0);
     } catch {
       setError("Couldn't load your deck. Check your connection and try again.");
     } finally {
@@ -282,6 +303,30 @@ export default function DeckPage() {
 
   const card = cards[0];
   const next = cards[1];
+
+  // The whole deck is available. Load the next batch as the stack runs low.
+  const loadMore = useCallback(async () => {
+    setLoadingMore(true);
+    try {
+      const res = await fetch("/api/deck?limit=100");
+      if (!res.ok) return;
+      const data = await res.json();
+      setLeft(data.remaining || 0);
+      setCards((prev) => {
+        const have = new Set(prev.map((c) => c.id));
+        const extra = ((data.cards || []) as Card[]).filter((c) => !have.has(c.id));
+        return extra.length ? [...prev, ...extra] : prev;
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !loadingMore && !error && cards.length <= 3 && left > cards.length) {
+      loadMore();
+    }
+  }, [cards.length, left, loading, loadingMore, error, loadMore]);
 
   // Tell the frame which job is on top so its Generate Now button knows.
   useEffect(() => {
@@ -312,8 +357,9 @@ export default function DeckPage() {
       setCards((c) => c.slice(1));
       setDx(0);
       setDy(0);
-      setExpanded(false);
+      setMore(false);
       setSwipedToday((n) => n + 1);
+      setLeft((n) => Math.max(0, n - 1));
       setToast(dir === "left" ? "" : dir === "up" ? "Top pick saved." : "Saved to Interested.");
 
       fetch("/api/swipe", {
@@ -348,6 +394,7 @@ export default function DeckPage() {
       if (!hit) return;
       setFx({ key: Date.now(), dir: "right", card: hit, dx: 0, dy: 0 });
       setCards((c) => c.filter((x) => x.id !== id));
+      setLeft((n) => Math.max(0, n - 1));
       setToast("Saved to Interested.");
       window.setTimeout(() => setFx(null), 1150);
     }
@@ -370,7 +417,7 @@ export default function DeckPage() {
         const [entry] = history.current.splice(idx, 1);
         setCards((c) => [entry.card, ...c]);
         setSwipedToday((n) => Math.max(0, n - 1));
-        setLimitReached(false);
+        setLeft((n) => n + 1);
         setToast("");
         setFx(null);
         window.dispatchEvent(new Event("joby-refresh"));
@@ -398,7 +445,7 @@ export default function DeckPage() {
   }, [commit, undo]);
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (expanded) return;
+    if (more) return;
     start.current = { x: e.clientX, y: e.clientY };
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -428,8 +475,9 @@ export default function DeckPage() {
   const likeOp = vertical ? 0 : clamp01(dx / 90);
   const nopeOp = vertical ? 0 : clamp01(-dx / 90);
   const topOp = vertical ? clamp01(-dy / 90) : 0;
-  const done = Math.min(dailyLimit, swipedToday);
-  const ringPct = dailyLimit > 0 ? done / dailyLimit : 0;
+  const total = swipedToday + left;
+  const ringPct = total > 0 ? Math.min(1, swipedToday / total) : 0;
+  const limitReached = cap > 0 && swipedToday >= cap;
 
   return (
     <div className="jb-deck">
@@ -440,7 +488,7 @@ export default function DeckPage() {
           </h1>
           <p>Swipe jobs, find your perfect match in Canada.</p>
         </div>
-        <div className="jb-today" aria-label={`Today's deck ${done} of ${dailyLimit}`}>
+        <div className="jb-today" aria-label={`${left} jobs left in your deck`}>
           <span className="jb-today-ring">
             <svg viewBox="0 0 48 48" width="62" height="62">
               <circle cx="24" cy="24" r="20" fill="none" stroke="#dcd6fb" strokeWidth="5" />
@@ -456,11 +504,9 @@ export default function DeckPage() {
                 transform="rotate(-90 24 24)"
               />
             </svg>
-            <b>
-              {done}/{dailyLimit}
-            </b>
+            <b>{left}</b>
           </span>
-          <span className="jb-today-label">Today&apos;s deck</span>
+          <span className="jb-today-label">Left in your deck</span>
         </div>
       </div>
 
@@ -489,16 +535,18 @@ export default function DeckPage() {
 
             {!loading && !error && !card && !fx && (
               <div className="jb-empty">
-                <h2>{limitReached ? "You're all caught up" : "No new matches yet"}</h2>
+                <h2>{limitReached || left === 0 ? "You're all caught up" : "Loading more jobs…"}</h2>
                 <p>
                   {limitReached
-                    ? `You've seen today's ${dailyLimit} jobs. Fresh postings are pulled in every morning, so come back tomorrow for a new deck.`
-                    : "Add a resume and a job search. New matches are pulled in every morning."}
+                    ? `You've reached today's limit of ${cap}. Come back tomorrow for more.`
+                    : left === 0
+                    ? "You've been through your whole deck. Fresh postings are pulled in every morning."
+                    : "Fetching the next batch."}
                 </p>
                 <Link href="/interested" className="jb-btn jb-btn-primary">
                   Open Interested
                 </Link>
-                {!limitReached && (
+                {!limitReached && left === 0 && (
                   <Link href="/jobs" className="jb-btn jb-btn-outline">
                     Add a job search
                   </Link>
@@ -530,42 +578,11 @@ export default function DeckPage() {
                     cursor: dragging ? "grabbing" : "grab",
                   }}
                 >
-                  <CardBody card={card} />
-                  <button
-                    type="button"
-                    className="jb-info"
-                    aria-label="Show details"
-                    aria-expanded={expanded}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => setExpanded((v) => !v)}
-                  >
-                    i
-                  </button>
+                  <CardBody card={card} more={more} onMore={() => setMore((v) => !v)} />
 
                   <div className="jb-stamp jb-stamp-like" style={{ opacity: likeOp }}>INTERESTED</div>
                   <div className="jb-stamp jb-stamp-nope" style={{ opacity: nopeOp }}>PASS</div>
                   <div className="jb-stamp jb-stamp-top" style={{ opacity: topOp }}>TOP PICK</div>
-
-                  {expanded && (
-                    <div className="jb-sheet" onPointerDown={(e) => e.stopPropagation()}>
-                      <div className="jb-sheet-head">
-                        <strong>About this job</strong>
-                        <button type="button" aria-label="Close details" onClick={() => setExpanded(false)}>
-                          ×
-                        </button>
-                      </div>
-                      <p>{card.summary}</p>
-                      {card.keywordsMissing.length > 0 && (
-                        <div className="jb-sheet-miss">
-                          Not on your resume: {card.keywordsMissing.join(", ")}
-                        </div>
-                      )}
-                      <div className="jb-sheet-src">
-                        {card.sourceLabel}
-                        {card.attribution ? ` · ${card.attribution}` : ""}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -589,9 +606,7 @@ export default function DeckPage() {
           <button type="button" className="jb-pill" onClick={undo}>
             <UndoI width={16} height={16} /> Undo
           </button>
-          <span className="jb-pill jb-pill-count">
-            {done} / {dailyLimit}
-          </span>
+          <span className="jb-pill jb-pill-count">{left} left</span>
           <span className="jb-pill jb-pill-keys">Keyboard: ← → ↑</span>
         </div>
         <div className="jb-toast" aria-live="polite">

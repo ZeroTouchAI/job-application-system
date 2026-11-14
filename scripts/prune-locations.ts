@@ -4,9 +4,11 @@
 //
 //   DRY_RUN=true|false   (default true)
 //   PRUNE_PASSED=true|false  also remove passed jobs outside the areas (default true)
+//   SINCE=YYYY-MM-DD     also remove everything that entered the system before
+//                        this date (applied/interview/offer records are kept)
 
 import { db } from "../lib/db";
-import { pruneUser } from "../lib/prune";
+import { pruneOld, pruneUser } from "../lib/prune";
 
 async function main() {
   const dryRun = process.env.DRY_RUN !== "false";
@@ -22,6 +24,17 @@ async function main() {
       `${u.email}: ${before} jobs; ${dryRun ? "would remove" : "removed"} ${r.suggested} unswiped and ${r.passed} passed; ${dryRun ? "would leave" : "left"} ${after}`
     );
   }
+
+  const since = (process.env.SINCE || "").trim();
+  if (since) {
+    const cutoff = new Date(`${since}T00:00:00.000Z`);
+    if (Number.isNaN(cutoff.getTime())) throw new Error(`SINCE is not a date: ${since}`);
+    const r = await pruneOld({ cutoff, dryRun });
+    console.log(
+      `Before ${since}: ${dryRun ? "would remove" : "removed"} ${r.applications} job records and ${r.postings} old postings; kept ${r.keptApplied} applied/interview/offer records`
+    );
+  }
+
   await db.$disconnect();
 }
 
