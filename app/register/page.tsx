@@ -4,11 +4,14 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AuthShell from "../components/AuthShell";
+import { ArrowIcon, EyeIcon, EyeOffIcon, LockIcon, MailIcon } from "../components/authicons";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,27 +29,19 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong");
+        setError(data.error || "Something went wrong creating your account.");
         setLoading(false);
         return;
       }
 
-      // Auto sign-in right after registering, so the person lands
-      // straight in the dashboard instead of hitting a second form.
-      const signInResult = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        // Account was created but auto-login failed for some reason —
-        // send them to log in manually rather than leaving them stuck.
+      const result = await signIn("credentials", { email, password, redirect: false });
+      setLoading(false);
+      if (result?.error) {
         router.push("/login");
         return;
       }
-
       router.push("/profile");
+      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
@@ -54,52 +49,53 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="auth-shell">
-      <div className="auth-card">
-        <h1>Create your account</h1>
-        <p className="sub">Free, no credit card. Your data stays yours.</p>
+    <AuthShell title="Create Your Account" subtitle="Start finding jobs across Canada">
+      <form onSubmit={handleSubmit} className="au-form">
+        {error && <div className="au-error">{error}</div>}
 
-        {error && <div className="form-error">{error}</div>}
+        <label className="au-field">
+          <MailIcon />
+          <input
+            type="email"
+            placeholder="Email Address"
+            aria-label="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+        </label>
 
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-            />
-            <div className="field-hint">Must be at least 8 characters.</div>
-          </div>
+        <label className="au-field">
+          <LockIcon />
+          <input
+            type={show ? "text" : "password"}
+            placeholder="Password (at least 8 characters)"
+            aria-label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
           <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ width: "100%" }}
-            disabled={loading}
+            type="button"
+            className="au-eye"
+            onClick={() => setShow((v) => !v)}
+            aria-label={show ? "Hide password" : "Show password"}
           >
-            {loading ? "Creating account..." : "Create account"}
+            {show ? <EyeOffIcon /> : <EyeIcon />}
           </button>
-        </form>
+        </label>
 
-        <div className="auth-switch">
-          Already have an account? <Link href="/login">Log in</Link>
-        </div>
-      </div>
-    </div>
+        <button type="submit" className="au-submit" disabled={loading}>
+          {loading ? "Creating account..." : "Create Account"} {!loading && <ArrowIcon />}
+        </button>
+
+        <p className="au-switch">
+          Already have an account? <Link href="/login">Sign In</Link>
+        </p>
+      </form>
+    </AuthShell>
   );
 }
