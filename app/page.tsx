@@ -1,331 +1,264 @@
 import Link from "next/link";
+import Skyline from "./components/Skyline";
+import { JobLogo, LocationLine, MatchRing } from "./components/jobui";
 import {
-  CheckIcon,
-  ShieldIcon,
-  DatabaseIcon,
-  UserCheckIcon,
-  SendIcon,
+  ArrowIcon,
+  BoltIcon,
+  CheckCircleIcon,
+  DocIcon,
+  LeafIcon,
+  RocketIcon,
+  SwipeIcon,
   TargetIcon,
-  FileTextIcon,
-  MailDraftIcon,
-  TrackIcon,
-  UploadIcon,
-  SearchIcon,
-} from "./icons";
+} from "./components/authicons";
+import { BriefcaseI, BulbI } from "./components/jbicons";
 
-const CHECKLIST = [
-  "Grounded resume tailoring",
-  "Drafted cover letters",
-  "Application tracking",
-  "Review before anything sends",
-  "ToS-compliant job sourcing",
-  "100% free & open source",
-];
-
-const TRUST_ITEMS = [
-  { icon: ShieldIcon, title: "Verified skills", sub: "Never invented" },
-  { icon: DatabaseIcon, title: "Legitimate job APIs", sub: "Never scraped" },
-  { icon: UserCheckIcon, title: "You review & approve", sub: "Always in control" },
-  { icon: SendIcon, title: "Apply through the employer", sub: "Never auto-submitted" },
+const WHY = [
+  {
+    title: "Swipe to Discover",
+    text: "Quickly browse jobs that match your skills.",
+    Icon: SwipeIcon,
+    tone: "violet",
+  },
+  {
+    title: "Get Ready",
+    text: "Create tailored resumes and cover letters.",
+    Icon: CheckCircleIcon,
+    tone: "green",
+  },
+  {
+    title: "Apply with Confidence",
+    text: "Open the application and take the next step.",
+    Icon: RocketIcon,
+    tone: "amber",
+  },
+  {
+    title: "Built for Canada",
+    text: "Find opportunities in the areas you choose.",
+    Icon: LeafIcon,
+    tone: "red",
+  },
 ];
 
 const STEPS = [
   {
-    icon: UploadIcon,
-    title: "Add your profile",
-    desc: "Paste your resume or LinkedIn text and we build a verified skills database from it. Nothing more.",
+    n: "1",
+    title: "Add your resume and your areas",
+    text: "Paste your resume once, then pick the job titles and the cities you would work in.",
   },
   {
-    icon: SearchIcon,
-    title: "Discover matching jobs",
-    desc: "We pull postings from legitimate public job APIs on a schedule and score them against your profile.",
+    n: "2",
+    title: "Swipe your matches",
+    text: "Right for interested, left to pass, up for a top pick. Every card shows pay, location and the date it was posted.",
   },
   {
-    icon: FileTextIcon,
-    title: "Generate applications",
-    desc: "A tailored resume and cover letter, grounded entirely in what's actually in your profile.",
-  },
-  {
-    icon: CheckIcon,
-    title: "Review the truth audit",
-    desc: "Every bullet is checked against your profile and flagged verified or needs-review before you see it.",
-  },
-  {
-    icon: TrackIcon,
-    title: "Apply & track",
-    desc: "Submit through the employer's own application page or listed inbox, and track status over time.",
+    n: "3",
+    title: "Apply on your own terms",
+    text: "Generate a tailored resume and cover letter, open the employer's application, and mark it applied.",
   },
 ];
 
-const FEATURES = [
+const FAQ = [
   {
-    icon: TargetIcon,
-    title: "Grounded job matching",
-    desc: "Match scoring based on your actual verified skills against each posting's real requirements.",
+    q: "Does Joby apply for me?",
+    a: "No. Joby prepares your resume and cover letter and opens the employer's own application page. You review everything and submit it yourself.",
   },
   {
-    icon: FileTextIcon,
-    title: "Resume tailoring",
-    desc: "ATS-safe, single-column formatting with every bullet traceable back to your profile.",
+    q: "Where do the jobs come from?",
+    a: "Company career pages (Greenhouse, Lever and Ashby) and job boards such as Indeed and LinkedIn. Only jobs in the areas you choose are shown.",
   },
   {
-    icon: MailDraftIcon,
-    title: "Email drafts you review",
-    desc: "When a posting lists an application email, we draft it, and you always read it and hit send yourself.",
+    q: "Will Joby make things up on my resume?",
+    a: "No. Tailored documents are built only from what is in the resume you provide.",
   },
   {
-    icon: FileTextIcon,
-    title: "Cover letter generation",
-    desc: "Specific to the company and role, and honest about at least one real gap instead of hiding it.",
-  },
-  {
-    icon: TrackIcon,
-    title: "Application tracker",
-    desc: "Every application logged with match score, documents used, and status over time.",
-  },
-  {
-    icon: ShieldIcon,
-    title: "Self-hosted, your data",
-    desc: "Runs on your own free Postgres database. Nothing about you is sold or shared.",
+    q: "Is it only for Canada?",
+    a: "For now, yes. Joby starts with Canadian jobs and will expand later.",
   },
 ];
 
-export default function HomePage() {
+export default function LandingPage() {
   return (
-    <>
-      <header className="site-header">
-        <div className="container site-header-inner">
-          <div className="logo">
-            <span className="logo-mark">J</span>
-            <div className="logo-block">
-              Joby
-              <span className="powered-by">
-                Powered by{" "}
-                <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
-                  ZeroTouchAI.com
-                </a>
-              </span>
-            </div>
-          </div>
-          <nav className="site-nav">
-            <div className="site-nav-links">
-              <a href="#features">Features</a>
-              <a href="#how-it-works">How it works</a>
-              <a
-                href="https://github.com/ZeroTouchAI/job-application-system"
-                target="_blank"
-                rel="noreferrer"
-              >
-                GitHub
-              </a>
-            </div>
-            <div className="site-nav-actions">
-              <Link href="/login" className="btn btn-outline btn-sm">
-                Log in
-              </Link>
-              <Link href="/register" className="btn btn-primary btn-sm">
-                Get started free
-              </Link>
-            </div>
-          </nav>
+    <div className="lp">
+      {/* ---------- Header ---------- */}
+      <header className="lp-nav">
+        <Link href="/" className="lp-logo" aria-label="Joby home">
+          <img src="/joby-leaf.svg" alt="" width={44} height={44} />
+          <span>Joby</span>
+        </Link>
+        <nav className="lp-links" aria-label="Sections">
+          <a href="#how">How It Works</a>
+          <a href="#features">Features</a>
+          <a href="#about">About</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <div className="lp-nav-right">
+          <Link href="/login" className="lp-login">
+            Log in
+          </Link>
+          <Link href="/register" className="lp-btn lp-btn-sm">
+            Get Started
+          </Link>
         </div>
       </header>
 
-      <section className="hero">
-        <div className="container hero-inner">
-          <div className="hero-copy">
-            <div className="eyebrow">Free &amp; open source</div>
-            <h1>
-              Land your next job, <span className="accent">honestly</span>
-            </h1>
-            <p className="lede">
-              This system finds real postings from legitimate job APIs, tailors a
-              resume and cover letter from your verified skills, and never
-              invents experience you don&apos;t have.
-            </p>
-            <ul className="hero-checklist">
-              {CHECKLIST.map((item) => (
-                <li key={item}>
-                  <CheckIcon className="check-icon" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <div className="hero-actions">
-              <Link href="/register" className="btn btn-primary">
-                Get started free
-              </Link>
-              <a href="#how-it-works" className="btn btn-outline">
-                See how it works
-              </a>
-            </div>
-            <div className="hero-footnote">
-              <CheckIcon className="check-icon" style={{ width: 15, height: 15 }} />
-              Free. Open source. No scraping, ever.
-            </div>
-          </div>
+      {/* ---------- Hero ---------- */}
+      <section className="lp-hero">
+        <div className="lp-hero-copy">
+          <h1>
+            Find Your
+            <br />
+            Next Opportunity
+          </h1>
+          <p className="lp-tag">
+            Swipe. Discover. <em>Apply.</em>
+          </p>
+          <p className="lp-lede">Joby helps Canadian job seekers find the right job with a simple swipe.</p>
+          <Link href="/register" className="lp-btn lp-btn-lg">
+            Get Started Free <ArrowIcon />
+          </Link>
 
-          <div className="hero-visual">
-            <div className="preview-window">
-              <div className="preview-titlebar">
-                <span className="preview-dot" style={{ background: "#ff5f57" }} />
-                <span className="preview-dot" style={{ background: "#febc2e" }} />
-                <span className="preview-dot" style={{ background: "#28c840" }} />
+          <ul className="lp-mini">
+            <li>
+              <span className="lp-mini-ico lp-tone-violet">
+                <BoltIcon />
+              </span>
+              Swipe Jobs
+              <br />
+              Like a Pro
+            </li>
+            <li>
+              <span className="lp-mini-ico lp-tone-indigo">
+                <TargetIcon />
+              </span>
+              Get Matches
+              <br />
+              That Fit
+            </li>
+            <li>
+              <span className="lp-mini-ico lp-tone-green">
+                <CheckCircleIcon />
+              </span>
+              Apply on Your
+              <br />
+              Own Terms
+            </li>
+          </ul>
+        </div>
+
+        <div className="lp-hero-visual" aria-hidden="true">
+          <Skyline className="lp-hero-sky" />
+          <div className="lp-stamp lp-stamp-pass">PASS</div>
+          <div className="lp-stamp lp-stamp-like">INTERESTED</div>
+          <div className="lp-stamp lp-stamp-top">TOP PICK</div>
+          <div className="lp-card">
+            <div className="lp-card-head">
+              <JobLogo company="Maple Financial" size={58} />
+              <div className="lp-card-title">
+                <b>Software Engineer</b>
+                <span>Maple Financial</span>
               </div>
-              <div className="preview-body">
-                <div className="preview-title">Your matches</div>
-                <div className="preview-stat-grid">
-                  <div className="preview-stat">
-                    <div className="num">12</div>
-                    <div className="label">New matches</div>
-                  </div>
-                  <div className="preview-stat">
-                    <div className="num">4</div>
-                    <div className="label">Applied</div>
-                  </div>
-                </div>
-                <div className="preview-match">
-                  <div>
-                    <div className="role">Operations Coordinator</div>
-                    <div className="meta">Acme Logistics · Remote</div>
-                  </div>
-                  <span className="score">82% match</span>
-                </div>
-                <div className="preview-match">
-                  <div>
-                    <div className="role">Data Analyst</div>
-                    <div className="meta">Riverside Group · Toronto</div>
-                  </div>
-                  <span className="score">76% match</span>
-                </div>
-                <div className="preview-match">
-                  <div>
-                    <div className="role">Program Associate</div>
-                    <div className="meta">Northwind Co · Hybrid</div>
-                  </div>
-                  <span className="score">64% match</span>
-                </div>
-              </div>
+              <MatchRing score={92} size={70} />
             </div>
+            <div className="lp-card-line">
+              <LocationLine location="Toronto, ON" mode="hybrid" />
+            </div>
+            <div className="lp-card-line lp-card-pay">
+              <BriefcaseI width={16} height={16} />
+              <b>$80K &ndash; $120K CAD</b>
+              <span>&bull; Posted 2 days ago</span>
+            </div>
+            <div className="lp-card-match">
+              <BulbI width={16} height={16} />
+              <span>Matches your skills: React, TypeScript, cloud computing</span>
+            </div>
+            <div className="lp-card-note">Example job card</div>
           </div>
         </div>
       </section>
 
-      <section className="trust-bar">
-        <div className="container trust-bar-inner">
-          {TRUST_ITEMS.map(({ icon: Icon, title, sub }) => (
-            <div className="trust-item" key={title}>
-              <Icon className="icon" />
-              <div>
-                <div className="title">{title}</div>
-                <div className="sub">{sub}</div>
-              </div>
+      {/* ---------- How it works ---------- */}
+      <section id="how" className="lp-section lp-how">
+        <h2>How It Works</h2>
+        <ol className="lp-steps">
+          {STEPS.map((s) => (
+            <li key={s.n}>
+              <span className="lp-step-n">{s.n}</span>
+              <b>{s.title}</b>
+              <p>{s.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* ---------- Why Joby ---------- */}
+      <section id="features" className="lp-section lp-why">
+        <h2>Why Joby?</h2>
+        <div className="lp-why-grid">
+          {WHY.map(({ title, text, Icon, tone }) => (
+            <div className="lp-why-item" key={title}>
+              <span className={`lp-why-ico lp-tone-${tone}`}>
+                <Icon width={26} height={26} />
+              </span>
+              <b>{title}</b>
+              <p>{text}</p>
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="section" id="how-it-works">
-        <div className="container">
-          <div className="section-heading">
-            <h2>How it works</h2>
-            <p>Five steps, and you&apos;re in control at every one of them.</p>
-          </div>
-          <div className="steps">
-            {STEPS.map(({ icon: Icon, title, desc }, i) => (
-              <div className="step" key={title}>
-                {i < STEPS.length - 1 && <div className="step-connector" />}
-                <div className="step-circle">
-                  <Icon width={26} height={26} />
-                </div>
-                <div className="step-num">STEP {i + 1}</div>
-                <div className="step-title">{title}</div>
-                <div className="step-desc">{desc}</div>
-              </div>
-            ))}
-          </div>
+        <div className="lp-docs">
+          <DocIcon width={22} height={22} />
+          Every card shows pay, location, work mode and when the job was posted, so you can decide in a swipe.
         </div>
       </section>
 
-      <section className="section features-section" id="features">
-        <div className="container">
-          <div className="section-heading">
-            <h2>Everything you need, nothing that overreaches</h2>
-            <p>Built to help your search, not to spam anyone on your behalf.</p>
-          </div>
-          <div className="features-grid">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div className="feature-card" key={title}>
-                <Icon className="icon" />
-                <h3>{title}</h3>
-                <p>{desc}</p>
-              </div>
-            ))}
-          </div>
+      {/* ---------- About ---------- */}
+      <section id="about" className="lp-section lp-about">
+        <h2>About</h2>
+        <p>
+          Joby is built by ZeroTouchAI for Canadian job seekers. It finds postings in the cities you pick, scores
+          them against your resume, and helps you prepare each application. You always review and submit it
+          yourself.
+        </p>
+      </section>
+
+      {/* ---------- FAQ ---------- */}
+      <section id="faq" className="lp-section lp-faq">
+        <h2>FAQ</h2>
+        <div className="lp-faq-list">
+          {FAQ.map((f) => (
+            <details key={f.q}>
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
+        </div>
+        <div className="lp-final">
+          <Link href="/register" className="lp-btn lp-btn-lg">
+            Get Started Free <ArrowIcon />
+          </Link>
         </div>
       </section>
 
-      <section className="cta-band">
-        <div className="container cta-band-inner">
-          <div>
-            <h2>Ready to search smarter?</h2>
-            <p>
-              Set up your profile in a few minutes and let the system do the
-              legwork.
-            </p>
-            <div className="cta-actions">
-              <Link href="/register" className="btn btn-primary">
-                Get started free
-              </Link>
-              <a
-                href="https://github.com/ZeroTouchAI/job-application-system"
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-outline"
-                style={{ borderColor: "rgba(255,255,255,0.25)", color: "#fff" }}
-              >
-                View on GitHub
-              </a>
-            </div>
-          </div>
-          <div className="cta-badges">
-            <div className="cta-badge">
-              <ShieldIcon className="icon" />
-              <div>
-                <div className="title">100% free &amp; open source</div>
-                <div className="sub">Built transparently for job seekers</div>
-              </div>
-            </div>
-            <div className="cta-badge">
-              <DatabaseIcon className="icon" />
-              <div>
-                <div className="title">Your data, your control</div>
-                <div className="sub">Self-hosted on your own database</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer className="site-footer">
-        <div className="container site-footer-inner">
-          <span>
-            &copy; {new Date().getFullYear()} Joby. Free &amp; open
-            source. Powered by{" "}
-            <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
-              ZeroTouchAI.com
-            </a>
-            .
-          </span>
-          <a
-            href="https://github.com/ZeroTouchAI/job-application-system"
-            target="_blank"
-            rel="noreferrer"
-          >
+      {/* ---------- Footer ---------- */}
+      <footer className="lp-foot">
+        <span className="lp-foot-brand">
+          <img src="/joby-leaf.svg" alt="" width={30} height={30} />
+          Joby
+        </span>
+        <small>
+          Powered by{" "}
+          <a href="https://zerotouchai.com" target="_blank" rel="noreferrer">
+            ZeroTouchAI.com
+          </a>
+        </small>
+        <nav aria-label="Footer">
+          <Link href="/login">Log in</Link>
+          <Link href="/register">Sign up</Link>
+          <a href="https://github.com/ZeroTouchAI/job-application-system" target="_blank" rel="noreferrer">
             GitHub
           </a>
-        </div>
+        </nav>
       </footer>
-    </>
+    </div>
   );
 }

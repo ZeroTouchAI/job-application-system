@@ -4,6 +4,7 @@ import Providers from "./providers";
 import "./globals.css";
 import "./joby.css";
 import "./joby-v4.css";
+import "./landing.css";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -14,12 +15,6 @@ const display = Fraunces({
 
 export const metadata = {
   title: "Joby: Land your next job, honestly",
-  // The Joby logo doubles as the favicon and the iOS home-screen icon.
-  icons: {
-    icon: "/joby-logo.png",
-    shortcut: "/joby-logo.png",
-    apple: "/apple-touch-icon.png",
-  },
   description:
     "A free, open-source job-search co-pilot by ZeroTouchAI: tailored resumes grounded in your verified skills, job postings sourced from legitimate APIs, applications you always review before they go out.",
 };
