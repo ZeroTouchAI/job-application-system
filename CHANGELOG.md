@@ -7,6 +7,18 @@ fails a pull request that doesn't bump it.
 Versioning: `MAJOR.MINOR.PATCH`. Patch for fixes and small tweaks, minor for new
 features or visible changes, major for breaking changes to data or behaviour.
 
+## [0.5.0] - 2026-11-13
+### Added
+- New home page designed from J's mockup: hero with an example job card, "How It Works", "Why Joby?", About, FAQ and a dark footer. The copy is accurate: Joby never submits applications, and jobs come from company career pages and job boards (the old "never scraped" claim is gone).
+- New sign-in and sign-up pages: sky gradient with the skyline, password show/hide, and a shared layout.
+
+### Changed
+- New logo: the purple maple leaf from J's design, transparent. It is a vector (`public/joby-leaf.svg`) used as the favicon (`app/icon.svg`), on the new pages, and as a PNG in the app sidebar. The phone home-screen icon is generated from it (`app/apple-icon.tsx`).
+- The leaf is lightened on the dark app sidebar so it stays readable.
+
+### Not included (needs backend work)
+- "Continue with Google", "Forgot password?" and "Remember me" from the mockup, and Privacy / Terms / Contact pages.
+
 ## [0.4.0] - 2026-11-09
 ### Added
 - Posted date and "Added to Joby" date on the swipe deck, list view and details sheet.
